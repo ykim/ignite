@@ -33,6 +33,7 @@ import org.apache.ignite.internal.cluster.ClusterTopologyServerNotFoundException
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheEntryPredicate;
 import org.apache.ignite.internal.processors.cache.CachePartialUpdateCheckedException;
+import org.apache.ignite.internal.processors.cache.GridCacheAffinityManager;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheOperation;
 import org.apache.ignite.internal.processors.cache.GridCacheReturn;
@@ -62,7 +63,10 @@ import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRA
 /**
  * DHT atomic cache near update future.
  */
-public class GridNearAtomicUpdateFuture extends GridAbstractNearAtomicUpdateFuture {
+public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFuture {
+    /** Fast map flag. */
+    private final boolean fastMap;
+
     /** Keys */
     private Collection<?> keys;
 
@@ -151,6 +155,8 @@ public class GridNearAtomicUpdateFuture extends GridAbstractNearAtomicUpdateFutu
             remapCnt = 1;
 
         this.remapCnt = remapCnt;
+
+        fastMap = cache.isFastMap(filter, op);
     }
 
     /** {@inheritDoc} */
@@ -191,24 +197,6 @@ public class GridNearAtomicUpdateFuture extends GridAbstractNearAtomicUpdateFutu
             onResult(nodeId, res, true);
 
         return false;
-    }
-
-    /**
-     * Performs future mapping.
-     */
-    public void map() {
-        AffinityTopologyVersion topVer = cctx.shared().lockedTopologyVersion(null);
-
-        if (topVer == null)
-            mapOnTopology();
-        else {
-            topLocked = true;
-
-            // Cannot remap.
-            remapCnt = 1;
-
-            map(topVer, null);
-        }
     }
 
     /** {@inheritDoc} */
@@ -510,10 +498,8 @@ public class GridNearAtomicUpdateFuture extends GridAbstractNearAtomicUpdateFutu
         near.processNearAtomicUpdateResponse(req, res);
     }
 
-    /**
-     * Maps future on ready topology.
-     */
-    private void mapOnTopology() {
+    /** {@inheritDoc} */
+    @Override protected void mapOnTopology() {
         cache.topology().readLock();
 
         AffinityTopologyVersion topVer = null;
@@ -656,6 +642,11 @@ public class GridNearAtomicUpdateFuture extends GridAbstractNearAtomicUpdateFutu
 
             onResult(req.nodeId(), res, true);
         }
+    }
+
+    /** {@inheritDoc} */
+    protected void map(AffinityTopologyVersion topVer) {
+        map(topVer, null);
     }
 
     /**
@@ -1028,6 +1019,22 @@ public class GridNearAtomicUpdateFuture extends GridAbstractNearAtomicUpdateFutu
             true);
 
         return req;
+    }
+
+    /**
+     * Maps key to nodes. If filters are absent and operation is not TRANSFORM, then we can assign version on near
+     * node and send updates in parallel to all participating nodes.
+     *
+     * @param key Key to map.
+     * @param topVer Topology version to map.
+     * @return Collection of nodes to which key is mapped.
+     */
+    private Collection<ClusterNode> mapKey(KeyCacheObject key, AffinityTopologyVersion topVer) {
+        GridCacheAffinityManager affMgr = cctx.affinity();
+
+        // If we can send updates in parallel - do it.
+        return fastMap ? cctx.topology().nodes(affMgr.partition(key), topVer) :
+            Collections.singletonList(affMgr.primary(key, topVer));
     }
 
     /** {@inheritDoc} */

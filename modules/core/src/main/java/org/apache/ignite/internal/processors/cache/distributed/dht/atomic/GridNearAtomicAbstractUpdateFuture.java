@@ -19,40 +19,32 @@ package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
-import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheEntryPredicate;
 import org.apache.ignite.internal.processors.cache.CachePartialUpdateCheckedException;
-import org.apache.ignite.internal.processors.cache.GridCacheAffinityManager;
 import org.apache.ignite.internal.processors.cache.GridCacheAtomicFuture;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheMvccManager;
 import org.apache.ignite.internal.processors.cache.GridCacheOperation;
 import org.apache.ignite.internal.processors.cache.GridCacheReturn;
-import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
-import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteUuid;
 import org.jetbrains.annotations.Nullable;
 
 import javax.cache.expiry.ExpiryPolicy;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.ignite.cache.CacheAtomicWriteOrderMode.CLOCK;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_ASYNC;
-import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
-import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRANSFORM;
 
 /**
  * Base for near atomic update futures.
  */
-public abstract class GridAbstractNearAtomicUpdateFuture extends GridFutureAdapter<Object>
+public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapter<Object>
     implements GridCacheAtomicFuture<Object> {
     /** Logger reference. */
     private static final AtomicReference<IgniteLogger> logRef = new AtomicReference<>();
@@ -99,9 +91,6 @@ public abstract class GridAbstractNearAtomicUpdateFuture extends GridFutureAdapt
     /** Wait for topology future flag. */
     protected final boolean waitTopFut;
 
-    /** Fast map flag. */
-    protected final boolean fastMap;
-
     /** Near cache flag. */
     protected final boolean nearEnabled;
 
@@ -141,7 +130,7 @@ public abstract class GridAbstractNearAtomicUpdateFuture extends GridFutureAdapt
     /**
      * Constructor.
      */
-    protected GridAbstractNearAtomicUpdateFuture(
+    protected GridNearAtomicAbstractUpdateFuture(
         GridCacheContext cctx,
         GridDhtAtomicCache cache,
         CacheWriteSynchronizationMode syncMode,
@@ -173,12 +162,36 @@ public abstract class GridAbstractNearAtomicUpdateFuture extends GridFutureAdapt
         this.keepBinary = keepBinary;
         this.waitTopFut = waitTopFut;
 
-        fastMap = F.isEmpty(filter) && op != TRANSFORM && cctx.config().getWriteSynchronizationMode() == FULL_SYNC &&
-            cctx.config().getAtomicWriteOrderMode() == CLOCK &&
-            !(cctx.writeThrough() && cctx.config().getInterceptor() != null);
-
         nearEnabled = CU.isNearEnabled(cctx);
     }
+
+    /**
+     * Performs future mapping.
+     */
+    public void map() {
+        AffinityTopologyVersion topVer = cctx.shared().lockedTopologyVersion(null);
+
+        if (topVer == null)
+            mapOnTopology();
+        else {
+            topLocked = true;
+
+            // Cannot remap.
+            remapCnt = 1;
+
+            map(topVer);
+        }
+    }
+
+    /**
+     * @param topVer Topology version.
+     */
+    protected abstract void map(AffinityTopologyVersion topVer);
+
+    /**
+     * Maps future on ready topology.
+     */
+    protected abstract void mapOnTopology();
 
     /** {@inheritDoc} */
     @Override public IgniteUuid futureId() {
@@ -200,21 +213,5 @@ public abstract class GridAbstractNearAtomicUpdateFuture extends GridFutureAdapt
      */
     protected boolean storeFuture() {
         return cctx.config().getAtomicWriteOrderMode() == CLOCK || syncMode != FULL_ASYNC;
-    }
-
-    /**
-     * Maps key to nodes. If filters are absent and operation is not TRANSFORM, then we can assign version on near
-     * node and send updates in parallel to all participating nodes.
-     *
-     * @param key Key to map.
-     * @param topVer Topology version to map.
-     * @return Collection of nodes to which key is mapped.
-     */
-    protected Collection<ClusterNode> mapKey(KeyCacheObject key, AffinityTopologyVersion topVer) {
-        GridCacheAffinityManager affMgr = cctx.affinity();
-
-        // If we can send updates in parallel - do it.
-        return fastMap ? cctx.topology().nodes(affMgr.partition(key), topVer) :
-            Collections.singletonList(affMgr.primary(key, topVer));
     }
 }
