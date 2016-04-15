@@ -17,13 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.UUID;
-import javax.cache.expiry.ExpiryPolicy;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
 import org.apache.ignite.cluster.ClusterNode;
@@ -40,7 +33,6 @@ import org.apache.ignite.internal.processors.cache.GridCacheTryPutFailedExceptio
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtTopologyFuture;
 import org.apache.ignite.internal.processors.cache.distributed.near.GridNearAtomicCache;
-import org.apache.ignite.internal.processors.cache.dr.GridCacheDrInfo;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
@@ -54,6 +46,13 @@ import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 
+import javax.cache.expiry.ExpiryPolicy;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.UUID;
+
 import static org.apache.ignite.cache.CacheAtomicWriteOrderMode.CLOCK;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_ASYNC;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.PRIMARY_SYNC;
@@ -64,11 +63,11 @@ import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRA
  */
 public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpdateFuture {
     /** Keys */
-    private Collection<?> keys;
+    private Object keys;
 
     /** Values. */
     @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
-    private Collection<?> vals;
+    private Object vals;
 
     /** Optional arguments for entry processor. */
     private Object[] invokeArgs;
@@ -107,8 +106,8 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
         GridDhtAtomicCache cache,
         CacheWriteSynchronizationMode syncMode,
         GridCacheOperation op,
-        Collection<?> keys,
-        @Nullable Collection<?> vals,
+        Object keys,
+        @Nullable Object vals,
         @Nullable Object[] invokeArgs,
         final boolean retval,
         final boolean rawRetval,
@@ -124,7 +123,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
         super(cctx, cache, syncMode, op, retval, rawRetval, expiryPlc, filter, subjId, taskNameHash, skipStore,
             keepBinary, waitTopFut);
 
-        assert vals == null || vals.size() == keys.size();
         assert subjId != null;
 
         this.keys = keys;
@@ -660,8 +658,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
         GridNearAtomicUpdateRequest singleReq0 = null;
         Map<UUID, GridNearAtomicUpdateRequest> mappings0 = null;
 
-        int size = keys.size();
-
         GridCacheVersion futVer = cctx.versions().next(topVer);
 
         GridCacheVersion updVer;
@@ -681,7 +677,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
             updVer = null;
 
         try {
-            if (size == 1 && !fastMap) {
+            if (!fastMap) {
                 assert remapKeys == null || remapKeys.size() == 1;
 
                 singleReq0 = mapSingleUpdate(topVer, futVer, updVer);
@@ -707,7 +703,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
                     else
                         mappings0 = pendingMappings;
 
-                    assert !mappings0.isEmpty() || size == 0 : this;
+                    assert !mappings0.isEmpty() : this;
                 }
             }
 
@@ -751,10 +747,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
         else {
             assert mappings0 != null;
 
-            if (size == 0)
-                onDone(new GridCacheReturn(cctx, true, true, null, true));
-            else
-                doUpdate(mappings0);
+            doUpdate(mappings0);
         }
     }
 
@@ -796,37 +789,19 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
         GridCacheVersion futVer,
         @Nullable GridCacheVersion updVer,
         @Nullable Collection<KeyCacheObject> remapKeys) throws Exception {
-        Iterator<?> it = null;
-
-        if (vals != null)
-            it = vals.iterator();
-
         Map<UUID, GridNearAtomicUpdateRequest> pendingMappings = U.newHashMap(topNodes.size());
 
-        // Create mappings first, then send messages.
-        for (Object key : keys) {
-            if (key == null)
-                throw new NullPointerException("Null key.");
+        if (keys == null)
+            throw new NullPointerException("Null key.");
 
-            Object val;
+        Object val = this.vals;
 
-            if (vals != null) {
-                val = it.next();
+        if (val == null && op != GridCacheOperation.DELETE)
+            throw new NullPointerException("Null value.");
 
-                if (val == null)
-                    throw new NullPointerException("Null value.");
-            }
-            else
-                val = null;
+        KeyCacheObject cacheKey = cctx.toCacheKeyObject(keys);
 
-            if (val == null && op != GridCacheOperation.DELETE)
-                continue;
-
-            KeyCacheObject cacheKey = cctx.toCacheKeyObject(key);
-
-            if (remapKeys != null && !remapKeys.contains(cacheKey))
-                continue;
-
+        if (remapKeys == null || remapKeys.contains(cacheKey)) {
             if (op != TRANSFORM)
                 val = cctx.toCacheObject(val);
 
@@ -868,7 +843,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
                         keepBinary,
                         cctx.kernalContext().clientNode(),
                         cctx.deploymentEnabled(),
-                        keys.size());
+                        1);
 
                     pendingMappings.put(nodeId, mapped);
                 }
@@ -892,25 +867,15 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
     private GridNearAtomicUpdateRequest mapSingleUpdate(AffinityTopologyVersion topVer,
         GridCacheVersion futVer,
         @Nullable GridCacheVersion updVer) throws Exception {
-        Object key = F.first(keys);
-
-        Object val;
-
-        if (vals != null)
-            // Regular PUT.
-            val = F.first(vals);
-        else
-            // Regular REMOVE.
-            val = null;
-
-        // We still can get here if user pass map with single element.
-        if (key == null)
+        if (keys == null)
             throw new NullPointerException("Null key.");
+
+        Object val = this.vals;
 
         if (val == null && op != GridCacheOperation.DELETE)
             throw new NullPointerException("Null value.");
 
-        KeyCacheObject cacheKey = cctx.toCacheKeyObject(key);
+        KeyCacheObject cacheKey = cctx.toCacheKeyObject(keys);
 
         if (op != TRANSFORM)
             val = cctx.toCacheObject(val);
