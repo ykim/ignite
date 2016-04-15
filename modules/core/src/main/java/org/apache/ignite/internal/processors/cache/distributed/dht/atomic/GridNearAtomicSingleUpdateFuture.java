@@ -63,11 +63,11 @@ import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRA
  */
 public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpdateFuture {
     /** Keys */
-    private Object keys;
+    private Object key;
 
     /** Values. */
     @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
-    private Object vals;
+    private Object val;
 
     /** Optional arguments for entry processor. */
     private Object[] invokeArgs;
@@ -87,8 +87,8 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
      * @param cache Cache instance.
      * @param syncMode Write synchronization mode.
      * @param op Update operation.
-     * @param keys Keys to update.
-     * @param vals Values or transform closure.
+     * @param key Keys to update.
+     * @param val Values or transform closure.
      * @param invokeArgs Optional arguments for entry processor.
      * @param retval Return value require flag.
      * @param rawRetval {@code True} if should return {@code GridCacheReturn} as future result.
@@ -106,8 +106,8 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
         GridDhtAtomicCache cache,
         CacheWriteSynchronizationMode syncMode,
         GridCacheOperation op,
-        Object keys,
-        @Nullable Object vals,
+        Object key,
+        @Nullable Object val,
         @Nullable Object[] invokeArgs,
         final boolean retval,
         final boolean rawRetval,
@@ -125,8 +125,8 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
 
         assert subjId != null;
 
-        this.keys = keys;
-        this.vals = vals;
+        this.key = key;
+        this.val = val;
         this.invokeArgs = invokeArgs;
 
         if (!waitTopFut)
@@ -430,7 +430,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
 
                 cause.retryReadyFuture(cctx.affinity().affinityReadyFuture(remapTopVer));
 
-                e.add(Collections.singleton(keys), cause);
+                e.add(Collections.singleton(key), cause);
 
                 onDone(e);
 
@@ -776,15 +776,15 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
         @Nullable GridCacheVersion updVer) throws Exception {
         Map<UUID, GridNearAtomicUpdateRequest> pendingMappings = U.newHashMap(topNodes.size());
 
-        if (keys == null)
+        if (key == null)
             throw new NullPointerException("Null key.");
 
-        Object val = this.vals;
+        Object val = this.val;
 
         if (val == null && op != GridCacheOperation.DELETE)
             throw new NullPointerException("Null value.");
 
-        KeyCacheObject cacheKey = cctx.toCacheKeyObject(keys);
+        KeyCacheObject cacheKey = cctx.toCacheKeyObject(key);
 
         if (op != TRANSFORM)
             val = cctx.toCacheObject(val);
@@ -850,15 +850,15 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
     private GridNearAtomicUpdateRequest mapSingleUpdate(AffinityTopologyVersion topVer,
         GridCacheVersion futVer,
         @Nullable GridCacheVersion updVer) throws Exception {
-        if (keys == null)
+        if (key == null)
             throw new NullPointerException("Null key.");
 
-        Object val = this.vals;
+        Object val = this.val;
 
         if (val == null && op != GridCacheOperation.DELETE)
             throw new NullPointerException("Null value.");
 
-        KeyCacheObject cacheKey = cctx.toCacheKeyObject(keys);
+        KeyCacheObject cacheKey = cctx.toCacheKeyObject(key);
 
         if (op != TRANSFORM)
             val = cctx.toCacheObject(val);
