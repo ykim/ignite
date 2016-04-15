@@ -22,12 +22,15 @@ import org.apache.ignite.cache.CacheWriteSynchronizationMode;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheEntryPredicate;
+import org.apache.ignite.internal.processors.cache.CachePartialUpdateCheckedException;
 import org.apache.ignite.internal.processors.cache.GridCacheAffinityManager;
 import org.apache.ignite.internal.processors.cache.GridCacheAtomicFuture;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheMvccManager;
 import org.apache.ignite.internal.processors.cache.GridCacheOperation;
+import org.apache.ignite.internal.processors.cache.GridCacheReturn;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
@@ -104,6 +107,36 @@ public abstract class GridAbstractNearAtomicUpdateFuture extends GridFutureAdapt
 
     /** Mutex to synchronize state updates. */
     protected final Object mux = new Object();
+
+    /** Topology locked flag. Set if atomic update is performed inside a TX or explicit lock. */
+    protected boolean topLocked;
+
+    /** Remap count. */
+    protected int remapCnt;
+
+    /** Current topology version. */
+    protected AffinityTopologyVersion topVer = AffinityTopologyVersion.ZERO;
+
+    /** */
+    protected GridCacheVersion updVer;
+
+    /** Topology version when got mapping error. */
+    protected AffinityTopologyVersion mapErrTopVer;
+
+    /** */
+    protected int resCnt;
+
+    /** Error. */
+    protected CachePartialUpdateCheckedException err;
+
+    /** Future ID. */
+    protected GridCacheVersion futVer;
+
+    /** Completion future for a particular topology version. */
+    protected GridFutureAdapter<Void> topCompleteFut;
+
+    /** Operation result. */
+    protected GridCacheReturn opRes;
 
     /**
      * Constructor.

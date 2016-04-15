@@ -81,45 +81,15 @@ public class GridNearAtomicUpdateFuture extends GridAbstractNearAtomicUpdateFutu
     @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
     private Collection<GridCacheVersion> conflictRmvVals;
 
-    /** Topology locked flag. Set if atomic update is performed inside a TX or explicit lock. */
-    private boolean topLocked;
-
-    /** Remap count. */
-    private int remapCnt;
-
-    /** Current topology version. */
-    private AffinityTopologyVersion topVer = AffinityTopologyVersion.ZERO;
-
-    /** */
-    private GridCacheVersion updVer;
-
-    /** Topology version when got mapping error. */
-    private AffinityTopologyVersion mapErrTopVer;
-
     /** Mappings if operations is mapped to more than one node. */
     @GridToStringInclude
     private Map<UUID, GridNearAtomicUpdateRequest> mappings;
-
-    /** */
-    private int resCnt;
-
-    /** Error. */
-    private CachePartialUpdateCheckedException err;
-
-    /** Future ID. */
-    private GridCacheVersion futVer;
-
-    /** Completion future for a particular topology version. */
-    private GridFutureAdapter<Void> topCompleteFut;
 
     /** Keys to remap. */
     private Collection<KeyCacheObject> remapKeys;
 
     /** Not null is operation is mapped to single node. */
     private GridNearAtomicUpdateRequest singleReq;
-
-    /** Operation result. */
-    private GridCacheReturn opRes;
 
     /**
      * @param cctx Cache context.
