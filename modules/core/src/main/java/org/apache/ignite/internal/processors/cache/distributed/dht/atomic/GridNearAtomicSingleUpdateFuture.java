@@ -76,9 +76,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
     @GridToStringInclude
     private Map<UUID, GridNearAtomicUpdateRequest> mappings;
 
-    /** Keys to remap. */
-    private boolean remapKey;
-
     /** Not null is operation is mapped to single node. */
     private GridNearAtomicUpdateRequest singleReq;
 
@@ -299,8 +296,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
             if (res.remapKeys() != null) {
                 assert !fastMap || cctx.kernalContext().clientNode();
 
-                remapKey = true;
-
                 if (mapErrTopVer == null || mapErrTopVer.compareTo(req.topologyVersion()) < 0)
                     mapErrTopVer = req.topologyVersion();
             }
@@ -340,7 +335,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
             }
 
             if (rcvAll) {
-                if (remapKey) {
+                if (res.remapKeys() != null) {
                     assert mapErrTopVer != null;
 
                     remapTopVer = cctx.shared().exchange().topologyVersion();
@@ -364,8 +359,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
                                 new AffinityTopologyVersion(cause.topologyVersion().topologyVersion() + 1);
 
                             err = null;
-
-                            remapKey = true;
 
                             updVer = null;
                         }
@@ -420,8 +413,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
             }
 
             if (topLocked) {
-                assert remapKey;
-
                 CachePartialUpdateCheckedException e =
                     new CachePartialUpdateCheckedException("Failed to update keys (retry update if possible).");
 
@@ -706,8 +697,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridAbstractNearAtomicUpda
 
                 singleReq = singleReq0;
                 mappings = mappings0;
-
-                this.remapKey = false;
             }
         }
         catch (Exception e) {
