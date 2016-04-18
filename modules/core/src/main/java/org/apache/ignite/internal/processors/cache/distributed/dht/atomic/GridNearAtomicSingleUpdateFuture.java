@@ -59,7 +59,6 @@ import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRA
 /**
  * DHT atomic cache near update future.
  */
-// TODO: Only for !fastMap, only for !conflicts
 public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpdateFuture {
     /** Keys */
     private Object key;
