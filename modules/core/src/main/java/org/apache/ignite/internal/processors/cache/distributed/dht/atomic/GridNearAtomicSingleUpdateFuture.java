@@ -67,9 +67,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
     @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
     private Object val;
 
-    /** Optional arguments for entry processor. */
-    private Object[] invokeArgs;
-
     /** Not null is operation is mapped to single node. */
     private GridNearAtomicUpdateRequest req;
 
@@ -114,19 +111,13 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
         int remapCnt,
         boolean waitTopFut
     ) {
-        super(cctx, cache, syncMode, op, retval, rawRetval, expiryPlc, filter, subjId, taskNameHash, skipStore,
-            keepBinary, waitTopFut);
+        super(cctx, cache, syncMode, op, invokeArgs, retval, rawRetval, expiryPlc, filter, subjId, taskNameHash,
+            skipStore, keepBinary, remapCnt, waitTopFut);
 
         assert subjId != null;
 
         this.key = key;
         this.val = val;
-        this.invokeArgs = invokeArgs;
-
-        if (!waitTopFut)
-            remapCnt = 1;
-
-        this.remapCnt = remapCnt;
     }
 
     /** {@inheritDoc} */
@@ -371,7 +362,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                             try {
                                 AffinityTopologyVersion topVer = fut.get();
 
-                                map(topVer, remapKeys);
+                                map(topVer);
                             }
                             catch (IgniteCheckedException e) {
                                 onDone(e);
@@ -455,7 +446,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
             cache.topology().readUnlock();
         }
 
-        map(topVer, null);
+        map(topVer);
     }
 
     /**
@@ -508,14 +499,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
 
     /** {@inheritDoc} */
     protected void map(AffinityTopologyVersion topVer) {
-        map(topVer, null);
-    }
-
-    /**
-     * @param topVer Topology version.
-     * @param remapKeys Keys to remap.
-     */
-    void map(AffinityTopologyVersion topVer, @Nullable Collection<KeyCacheObject> remapKeys) {
         Collection<ClusterNode> topNodes = CU.affinityNodes(cctx, topVer);
 
         if (F.isEmpty(topNodes)) {

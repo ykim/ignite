@@ -64,6 +64,9 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
     /** Update operation. */
     protected final GridCacheOperation op;
 
+    /** Optional arguments for entry processor. */
+    protected final Object[] invokeArgs;
+
     /** Return value require flag. */
     protected final boolean retval;
 
@@ -129,12 +132,29 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
 
     /**
      * Constructor.
+     *
+     * @param cctx Cache context.
+     * @param cache Cache.
+     * @param syncMode Synchronization mode.
+     * @param op Operation.
+     * @param invokeArgs Invoke arguments.
+     * @param retval Return value flag.
+     * @param rawRetval Raw return value flag.
+     * @param expiryPlc Expiry policy.
+     * @param filter Filter.
+     * @param subjId Subject ID.
+     * @param taskNameHash Task name hash.
+     * @param skipStore Skip store flag.
+     * @param keepBinary Keep binary flag.
+     * @param remapCnt Remap count.
+     * @param waitTopFut Wait topology future flag.
      */
     protected GridNearAtomicAbstractUpdateFuture(
         GridCacheContext cctx,
         GridDhtAtomicCache cache,
         CacheWriteSynchronizationMode syncMode,
         GridCacheOperation op,
+        @Nullable Object[] invokeArgs,
         boolean retval,
         boolean rawRetval,
         @Nullable ExpiryPolicy expiryPlc,
@@ -143,6 +163,7 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
         int taskNameHash,
         boolean skipStore,
         boolean keepBinary,
+        int remapCnt,
         boolean waitTopFut
     ) {
         if (log == null)
@@ -152,6 +173,7 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
         this.cache = cache;
         this.syncMode = syncMode;
         this.op = op;
+        this.invokeArgs = invokeArgs;
         this.retval = retval;
         this.rawRetval = rawRetval;
         this.expiryPlc = expiryPlc;
@@ -163,6 +185,11 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
         this.waitTopFut = waitTopFut;
 
         nearEnabled = CU.isNearEnabled(cctx);
+
+        if (!waitTopFut)
+            remapCnt = 1;
+
+        this.remapCnt = remapCnt;
     }
 
     /**

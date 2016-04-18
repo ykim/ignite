@@ -74,9 +74,6 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
     @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
     private Collection<?> vals;
 
-    /** Optional arguments for entry processor. */
-    private Object[] invokeArgs;
-
     /** Conflict put values. */
     @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
     private Collection<GridCacheDrInfo> conflictPutVals;
@@ -137,8 +134,8 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
         int remapCnt,
         boolean waitTopFut
     ) {
-        super(cctx, cache, syncMode, op, retval, rawRetval, expiryPlc, filter, subjId, taskNameHash, skipStore,
-            keepBinary, waitTopFut);
+        super(cctx, cache, syncMode, op, invokeArgs, retval, rawRetval, expiryPlc, filter, subjId, taskNameHash,
+            skipStore, keepBinary, remapCnt, waitTopFut);
 
         assert vals == null || vals.size() == keys.size();
         assert conflictPutVals == null || conflictPutVals.size() == keys.size();
@@ -147,14 +144,8 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
 
         this.keys = keys;
         this.vals = vals;
-        this.invokeArgs = invokeArgs;
         this.conflictPutVals = conflictPutVals;
         this.conflictRmvVals = conflictRmvVals;
-
-        if (!waitTopFut)
-            remapCnt = 1;
-
-        this.remapCnt = remapCnt;
 
         fastMap = cache.isFastMap(filter, op);
     }
