@@ -42,7 +42,6 @@ import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
-import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 
 import javax.cache.expiry.ExpiryPolicy;
@@ -69,9 +68,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
 
     /** Not null is operation is mapped to single node. */
     private GridNearAtomicUpdateRequest req;
-
-    /** Keys to remap. */
-    private Collection<KeyCacheObject> remapKeys;
 
     /**
      * @param cctx Cache context.
@@ -215,12 +211,9 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
 
             this.req = null;
 
-            if (res.remapKeys() != null) {
-                if (remapKeys == null)
-                    remapKeys = U.newHashSet(res.remapKeys().size());
+            boolean remapKey = !F.isEmpty(res.remapKeys());
 
-                remapKeys.addAll(res.remapKeys());
-
+            if (remapKey) {
                 if (mapErrTopVer == null || mapErrTopVer.compareTo(req.topologyVersion()) < 0)
                     mapErrTopVer = req.topologyVersion();
             }
@@ -259,7 +252,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 }
             }
 
-            if (remapKeys != null) {
+            if (remapKey) {
                 assert mapErrTopVer != null;
 
                 remapTopVer = cctx.shared().exchange().topologyVersion();
@@ -283,14 +276,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                             new AffinityTopologyVersion(cause.topologyVersion().topologyVersion() + 1);
 
                         err = null;
-
-                        Collection<Object> failedKeys = cause.failedKeys();
-
-                        remapKeys = new ArrayList<>(failedKeys.size());
-
-                        for (Object key : failedKeys)
-                            remapKeys.add(cctx.toCacheKeyObject(key));
-
                         updVer = null;
                     }
                 }
@@ -332,8 +317,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
             }
 
             if (topLocked) {
-                assert !F.isEmpty(remapKeys) : remapKeys;
-
                 CachePartialUpdateCheckedException e =
                     new CachePartialUpdateCheckedException("Failed to update keys (retry update if possible).");
 
@@ -342,7 +325,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
 
                 cause.retryReadyFuture(cctx.affinity().affinityReadyFuture(remapTopVer));
 
-                e.add(remapKeys, cause);
+                e.add(Collections.singleton(cctx.toCacheKeyObject(key)), cause);
 
                 onDone(e);
 
@@ -543,8 +526,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 resCnt = 0;
 
                 req = singleReq0;
-
-                this.remapKeys = null;
             }
         }
         catch (Exception e) {
