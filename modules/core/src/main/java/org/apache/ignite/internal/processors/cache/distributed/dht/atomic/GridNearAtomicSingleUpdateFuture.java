@@ -644,7 +644,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 cctx.kernalContext().clientNode(),
                 cctx.deploymentEnabled());
 
-            req0.addUpdateEntry(cacheKey, val, true);
+            req0.addUpdateEntry(cacheKey, val);
 
             req = req0;
         }
