@@ -111,16 +111,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     /** Entry processor arguments bytes. */
     private byte[][] invokeArgsBytes;
 
-    /** Conflict versions. */
-    @GridDirectCollection(GridCacheVersion.class)
-    private List<GridCacheVersion> conflictVers;
-
-    /** Conflict TTLs. */
-    private GridLongList conflictTtls;
-
-    /** Conflict expire times. */
-    private GridLongList conflictExpireTimes;
-
     /** Return value flag. */
     private boolean retval;
 
@@ -416,39 +406,21 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
     /** {@inheritDoc} */
     @Override @Nullable public List<GridCacheVersion> conflictVersions() {
-        return conflictVers;
+        return null;
     }
 
     /** {@inheritDoc} */
     @Override @Nullable public GridCacheVersion conflictVersion(int idx) {
-        if (conflictVers != null) {
-            assert idx >= 0 && idx < conflictVers.size();
-
-            return conflictVers.get(idx);
-        }
-
         return null;
     }
 
     /** {@inheritDoc} */
     @Override public long conflictTtl(int idx) {
-        if (conflictTtls != null) {
-            assert idx >= 0 && idx < conflictTtls.size();
-
-            return conflictTtls.get(idx);
-        }
-
         return CU.TTL_NOT_CHANGED;
     }
 
     /** {@inheritDoc} */
     @Override public long conflictExpireTime(int idx) {
-        if (conflictExpireTimes != null) {
-            assert idx >= 0 && idx < conflictExpireTimes.size();
-
-            return conflictExpireTimes.get(idx);
-        }
-
         return CU.EXPIRE_TIME_CALCULATE;
     }
 
@@ -571,132 +543,114 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 writer.incrementState();
 
             case 4:
-                if (!writer.writeMessage("conflictExpireTimes", conflictExpireTimes))
-                    return false;
-
-                writer.incrementState();
-
-            case 5:
-                if (!writer.writeMessage("conflictTtls", conflictTtls))
-                    return false;
-
-                writer.incrementState();
-
-            case 6:
-                if (!writer.writeCollection("conflictVers", conflictVers, MessageCollectionItemType.MSG))
-                    return false;
-
-                writer.incrementState();
-
-            case 7:
                 if (!writer.writeCollection("entryProcessorsBytes", entryProcessorsBytes, MessageCollectionItemType.BYTE_ARR))
                     return false;
 
                 writer.incrementState();
 
-            case 8:
+            case 5:
                 if (!writer.writeByteArray("expiryPlcBytes", expiryPlcBytes))
                     return false;
 
                 writer.incrementState();
 
-            case 9:
+            case 6:
                 if (!writer.writeBoolean("fastMap", fastMap))
                     return false;
 
                 writer.incrementState();
 
-            case 10:
+            case 7:
                 if (!writer.writeObjectArray("filter", filter, MessageCollectionItemType.MSG))
                     return false;
 
                 writer.incrementState();
 
-            case 11:
+            case 8:
                 if (!writer.writeMessage("futVer", futVer))
                     return false;
 
                 writer.incrementState();
 
-            case 12:
+            case 9:
                 if (!writer.writeBoolean("hasPrimary", hasPrimary))
                     return false;
 
                 writer.incrementState();
 
-            case 13:
+            case 10:
                 if (!writer.writeObjectArray("invokeArgsBytes", invokeArgsBytes, MessageCollectionItemType.BYTE_ARR))
                     return false;
 
                 writer.incrementState();
 
-            case 14:
+            case 11:
                 if (!writer.writeBoolean("keepBinary", keepBinary))
                     return false;
 
                 writer.incrementState();
 
-            case 15:
+            case 12:
                 if (!writer.writeCollection("keys", keys, MessageCollectionItemType.MSG))
                     return false;
 
                 writer.incrementState();
 
-            case 16:
+            case 13:
                 if (!writer.writeByte("op", op != null ? (byte)op.ordinal() : -1))
                     return false;
 
                 writer.incrementState();
 
-            case 17:
+            case 14:
                 if (!writer.writeBoolean("retval", retval))
                     return false;
 
                 writer.incrementState();
 
-            case 18:
+            case 15:
                 if (!writer.writeBoolean("skipStore", skipStore))
                     return false;
 
                 writer.incrementState();
 
-            case 19:
+            case 16:
                 if (!writer.writeUuid("subjId", subjId))
                     return false;
 
                 writer.incrementState();
 
-            case 20:
+            case 17:
                 if (!writer.writeByte("syncMode", syncMode != null ? (byte)syncMode.ordinal() : -1))
                     return false;
 
                 writer.incrementState();
 
-            case 21:
+            case 18:
                 if (!writer.writeInt("taskNameHash", taskNameHash))
                     return false;
 
                 writer.incrementState();
 
-            case 22:
+            case 19:
                 if (!writer.writeBoolean("topLocked", topLocked))
                     return false;
 
                 writer.incrementState();
 
-            case 23:
+            case 20:
                 if (!writer.writeMessage("topVer", topVer))
                     return false;
 
                 writer.incrementState();
 
-            case 24:
+            case 21:
                 if (!writer.writeMessage("updateVer", updateVer))
                     return false;
 
                 writer.incrementState();
 
-            case 25:
+            case 22:
                 if (!writer.writeCollection("vals", vals, MessageCollectionItemType.MSG))
                     return false;
 
@@ -727,30 +681,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 4:
-                conflictExpireTimes = reader.readMessage("conflictExpireTimes");
-
-                if (!reader.isLastRead())
-                    return false;
-
-                reader.incrementState();
-
-            case 5:
-                conflictTtls = reader.readMessage("conflictTtls");
-
-                if (!reader.isLastRead())
-                    return false;
-
-                reader.incrementState();
-
-            case 6:
-                conflictVers = reader.readCollection("conflictVers", MessageCollectionItemType.MSG);
-
-                if (!reader.isLastRead())
-                    return false;
-
-                reader.incrementState();
-
-            case 7:
                 entryProcessorsBytes = reader.readCollection("entryProcessorsBytes", MessageCollectionItemType.BYTE_ARR);
 
                 if (!reader.isLastRead())
@@ -758,7 +688,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 8:
+            case 5:
                 expiryPlcBytes = reader.readByteArray("expiryPlcBytes");
 
                 if (!reader.isLastRead())
@@ -766,7 +696,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 9:
+            case 6:
                 fastMap = reader.readBoolean("fastMap");
 
                 if (!reader.isLastRead())
@@ -774,7 +704,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 10:
+            case 7:
                 filter = reader.readObjectArray("filter", MessageCollectionItemType.MSG, CacheEntryPredicate.class);
 
                 if (!reader.isLastRead())
@@ -782,7 +712,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 11:
+            case 8:
                 futVer = reader.readMessage("futVer");
 
                 if (!reader.isLastRead())
@@ -790,7 +720,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 12:
+            case 9:
                 hasPrimary = reader.readBoolean("hasPrimary");
 
                 if (!reader.isLastRead())
@@ -798,7 +728,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 13:
+            case 10:
                 invokeArgsBytes = reader.readObjectArray("invokeArgsBytes", MessageCollectionItemType.BYTE_ARR, byte[].class);
 
                 if (!reader.isLastRead())
@@ -806,7 +736,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 14:
+            case 11:
                 keepBinary = reader.readBoolean("keepBinary");
 
                 if (!reader.isLastRead())
@@ -814,7 +744,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 15:
+            case 12:
                 keys = reader.readCollection("keys", MessageCollectionItemType.MSG);
 
                 if (!reader.isLastRead())
@@ -822,7 +752,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 16:
+            case 13:
                 byte opOrd;
 
                 opOrd = reader.readByte("op");
@@ -834,7 +764,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 17:
+            case 14:
                 retval = reader.readBoolean("retval");
 
                 if (!reader.isLastRead())
@@ -842,7 +772,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 18:
+            case 15:
                 skipStore = reader.readBoolean("skipStore");
 
                 if (!reader.isLastRead())
@@ -850,7 +780,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 19:
+            case 16:
                 subjId = reader.readUuid("subjId");
 
                 if (!reader.isLastRead())
@@ -858,7 +788,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 20:
+            case 17:
                 byte syncModeOrd;
 
                 syncModeOrd = reader.readByte("syncMode");
@@ -870,7 +800,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 21:
+            case 18:
                 taskNameHash = reader.readInt("taskNameHash");
 
                 if (!reader.isLastRead())
@@ -878,7 +808,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 22:
+            case 19:
                 topLocked = reader.readBoolean("topLocked");
 
                 if (!reader.isLastRead())
@@ -886,7 +816,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 23:
+            case 20:
                 topVer = reader.readMessage("topVer");
 
                 if (!reader.isLastRead())
@@ -894,7 +824,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 24:
+            case 21:
                 updateVer = reader.readMessage("updateVer");
 
                 if (!reader.isLastRead())
@@ -902,7 +832,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 25:
+            case 22:
                 vals = reader.readCollection("vals", MessageCollectionItemType.MSG);
 
                 if (!reader.isLastRead())
@@ -934,7 +864,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
-        return 26;
+        return 23;
     }
 
     /** {@inheritDoc} */
