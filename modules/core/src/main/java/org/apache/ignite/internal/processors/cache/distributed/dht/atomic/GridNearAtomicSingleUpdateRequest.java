@@ -30,7 +30,6 @@ import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.distributed.IgniteExternalizableExpiryPolicy;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
-import org.apache.ignite.internal.util.GridLongList;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
@@ -146,10 +145,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     @GridDirectTransient
     private GridNearAtomicUpdateResponse res;
 
-    /** Maximum possible size of inner collections. */
-    @GridDirectTransient
-    private int initSize;
-
     /**
      * Empty constructor required by {@link Externalizable}.
      */
@@ -226,13 +221,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         this.clientReq = clientReq;
         this.addDepInfo = addDepInfo;
 
-        // By default ArrayList expands to array of 10 elements on first add. We cannot guess how many entries
-        // will be added to request because of unknown affinity distribution. However, we DO KNOW how many keys
-        // participate in request. As such, we know upper bound of all collections in request. If this bound is lower
-        // than 10, we use it.
-        initSize = Math.min(maxEntryCnt, 10);
-
-        keys = new ArrayList<>(initSize);
+        keys = new ArrayList<>(1);
     }
 
     /** {@inheritDoc} */
@@ -341,7 +330,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
         if (entryProcessor != null) {
             if (entryProcessors == null)
-                entryProcessors = new ArrayList<>(initSize);
+                entryProcessors = new ArrayList<>(1);
 
             entryProcessors.add(entryProcessor);
         }
@@ -349,7 +338,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
             assert val instanceof CacheObject : val;
 
             if (vals == null)
-                vals = new ArrayList<>(initSize);
+                vals = new ArrayList<>(1);
 
             vals.add((CacheObject)val);
         }
