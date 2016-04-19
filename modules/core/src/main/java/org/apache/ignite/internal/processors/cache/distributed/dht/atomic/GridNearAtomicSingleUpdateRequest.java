@@ -174,7 +174,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
      * @param keepBinary Keep binary flag.
      * @param clientReq Client node request flag.
      * @param addDepInfo Deployment info flag.
-     * @param maxEntryCnt Maximum entries count.
      */
     public GridNearAtomicSingleUpdateRequest(
         int cacheId,
@@ -195,8 +194,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         boolean skipStore,
         boolean keepBinary,
         boolean clientReq,
-        boolean addDepInfo,
-        int maxEntryCnt
+        boolean addDepInfo
     ) {
         assert futVer != null;
 
