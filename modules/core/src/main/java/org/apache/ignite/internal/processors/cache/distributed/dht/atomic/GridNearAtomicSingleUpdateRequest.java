@@ -118,9 +118,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     /** Filter. */
     private CacheEntryPredicate[] filter;
 
-    /** Flag indicating whether request contains primary keys. */
-    private boolean hasPrimary;
-
     /** Subject ID. */
     private UUID subjId;
 
@@ -169,7 +166,10 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
      * @param keepBinary Keep binary flag.
      * @param clientReq Client node request flag.
      * @param addDepInfo Deployment info flag.
+     * @param key Key.
+     * @param val Value.
      */
+    @SuppressWarnings("unchecked")
     public GridNearAtomicSingleUpdateRequest(
         int cacheId,
         UUID nodeId,
@@ -189,7 +189,9 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         boolean skipStore,
         boolean keepBinary,
         boolean clientReq,
-        boolean addDepInfo
+        boolean addDepInfo,
+        KeyCacheObject key,
+        Object val
     ) {
         assert futVer != null;
 
@@ -213,6 +215,27 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         this.keepBinary = keepBinary;
         this.clientReq = clientReq;
         this.addDepInfo = addDepInfo;
+
+        EntryProcessor<Object, Object, Object> entryProcessor = null;
+
+        if (op == TRANSFORM) {
+            assert val instanceof EntryProcessor : val;
+
+            entryProcessor = (EntryProcessor<Object, Object, Object>) val;
+        }
+
+        assert val != null || op == DELETE;
+
+        this.key = key;
+
+        if (entryProcessor != null) {
+            this.entryProcessor = entryProcessor;
+        }
+        else if (val != null) {
+            assert val instanceof CacheObject : val;
+
+            this.val = (CacheObject)val;
+        }
     }
 
     /** {@inheritDoc} */
@@ -298,34 +321,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     /** {@inheritDoc} */
     @Override public boolean keepBinary() {
         return keepBinary;
-    }
-
-    /**
-     * @param key Key to add.
-     * @param val Optional update value.
-     */
-    @SuppressWarnings("unchecked")
-    public void addUpdateEntry(KeyCacheObject key, @Nullable Object val) {
-        EntryProcessor<Object, Object, Object> entryProcessor = null;
-
-        if (op == TRANSFORM) {
-            assert val instanceof EntryProcessor : val;
-
-            entryProcessor = (EntryProcessor<Object, Object, Object>) val;
-        }
-
-        assert val != null || op == DELETE;
-
-        this.key = key;
-
-        if (entryProcessor != null) {
-            this.entryProcessor = entryProcessor;
-        }
-        else if (val != null) {
-            assert val instanceof CacheObject : val;
-
-            this.val = (CacheObject)val;
-        }
     }
 
     /** {@inheritDoc} */
