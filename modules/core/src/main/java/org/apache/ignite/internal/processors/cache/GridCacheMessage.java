@@ -463,6 +463,24 @@ public abstract class GridCacheMessage implements Message {
     }
 
     /**
+     * @param obj Object to marshal.
+     * @param ctx Context.
+     * @return Marshaled object.
+     * @throws IgniteCheckedException If failed.
+     */
+    protected byte[] marshal(Object obj, GridCacheContext ctx) throws IgniteCheckedException {
+        assert ctx != null;
+
+        if (obj == null)
+            return null;
+
+        if (addDepInfo)
+            prepareObject(obj, ctx);
+
+        return CU.marshal(ctx, obj);
+    }
+
+    /**
      * @param col Collection to marshal.
      * @param ctx Context.
      * @return Marshalled collection.
@@ -539,6 +557,19 @@ public abstract class GridCacheMessage implements Message {
     }
 
     /**
+     * @param obj Object.
+     * @param ctx Context.
+     * @param ldr Class loader.
+     * @throws IgniteCheckedException If failed.
+     */
+    @SuppressWarnings("ForLoopReplaceableByForEach")
+    protected final void finishUnmarshalCacheObject(CacheObject obj, GridCacheContext ctx, ClassLoader ldr)
+        throws IgniteCheckedException {
+        if (obj != null)
+            obj.finishUnmarshal(ctx.cacheObjectContext(), ldr);
+    }
+
+    /**
      * @param col Collection.
      * @param ctx Context.
      * @param ldr Class loader.
@@ -586,6 +617,23 @@ public abstract class GridCacheMessage implements Message {
     /** {@inheritDoc} */
     @Override public void onAckReceived() {
         // No-op.
+    }
+
+    /**
+     * @param bytes Object to unmarshal.
+     * @param ctx Context.
+     * @param ldr Loader.
+     * @return Unmarshalled collection.
+     * @throws IgniteCheckedException If failed.
+     */
+    @Nullable protected <T> T unmarshal(@Nullable byte[] bytes,
+        GridCacheSharedContext ctx, ClassLoader ldr) throws IgniteCheckedException {
+        assert ldr != null;
+        assert ctx != null;
+
+        Marshaller marsh = ctx.marshaller();
+
+        return bytes == null ? null : marsh.<T>unmarshal(bytes, U.resolveClassLoader(ldr, ctx.gridConfig()));
     }
 
     /**

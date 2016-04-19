@@ -19,7 +19,6 @@ package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
-import org.apache.ignite.internal.GridDirectCollection;
 import org.apache.ignite.internal.GridDirectTransient;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheEntryPredicate;
@@ -45,8 +44,8 @@ import javax.cache.expiry.ExpiryPolicy;
 import javax.cache.processor.EntryProcessor;
 import java.io.Externalizable;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -86,22 +85,18 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     /** Update operation. */
     private GridCacheOperation op;
 
-    /** Keys to update. */
+    /** Key to update. */
     @GridToStringInclude
-    @GridDirectCollection(KeyCacheObject.class)
-    private List<KeyCacheObject> keys;
+    private KeyCacheObject key;
 
-    /** Values to update. */
-    @GridDirectCollection(CacheObject.class)
-    private List<CacheObject> vals;
+    /** Value to update. */
+    private CacheObject val;
 
-    /** Entry processors. */
-    @GridDirectTransient
-    private List<EntryProcessor<Object, Object, Object>> entryProcessors;
+    /** Entry processor. */
+    private EntryProcessor<Object, Object, Object> entryProcessor;
 
-    /** Entry processors bytes. */
-    @GridDirectCollection(byte[].class)
-    private List<byte[]> entryProcessorsBytes;
+    /** Entry processor bytes. */
+    private byte[] entryProcessorBytes;
 
     /** Optional arguments for entry processor. */
     @GridDirectTransient
@@ -218,8 +213,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         this.keepBinary = keepBinary;
         this.clientReq = clientReq;
         this.addDepInfo = addDepInfo;
-
-        keys = new ArrayList<>(1);
     }
 
     /** {@inheritDoc} */
@@ -324,21 +317,15 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
         assert val != null || op == DELETE;
 
-        keys.add(key);
+        this.key = key;
 
         if (entryProcessor != null) {
-            if (entryProcessors == null)
-                entryProcessors = new ArrayList<>(1);
-
-            entryProcessors.add(entryProcessor);
+            this.entryProcessor = entryProcessor;
         }
         else if (val != null) {
             assert val instanceof CacheObject : val;
 
-            if (vals == null)
-                vals = new ArrayList<>(1);
-
-            vals.add((CacheObject)val);
+            this.val = (CacheObject)val;
         }
 
         hasPrimary |= primary;
@@ -346,17 +333,17 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
     /** {@inheritDoc} */
     @Override public List<KeyCacheObject> keys() {
-        return keys;
+        return Collections.singletonList(key);
     }
 
     /** {@inheritDoc} */
     @Override public int keysCount() {
-        return keys.size();
+        return 1;
     }
 
     /** {@inheritDoc} */
     @Override public List<?> values() {
-        return op == TRANSFORM ? entryProcessors : vals;
+        return op == TRANSFORM ? Collections.singletonList(entryProcessor) : Collections.singletonList(val);
     }
 
     /** {@inheritDoc} */
@@ -372,23 +359,24 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     /** {@inheritDoc} */
     @Override public CacheObject value(int idx) {
         assert op == UPDATE : op;
+        assert idx == 0;
 
-        return vals.get(idx);
+        return val;
     }
 
     /** {@inheritDoc} */
     @Override public EntryProcessor<Object, Object, Object> entryProcessor(int idx) {
         assert op == TRANSFORM : op;
+        assert idx == 0;
 
-        return entryProcessors.get(idx);
+        return entryProcessor;
     }
 
     /** {@inheritDoc} */
     @Override public CacheObject writeValue(int idx) {
-        if (vals != null)
-            return vals.get(idx);
+        assert idx == 0;
 
-        return null;
+        return val;
     }
 
     /** {@inheritDoc} */
@@ -439,7 +427,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        prepareMarshalCacheObjects(keys, cctx);
+        prepareMarshalCacheObject(key, cctx);
 
         if (filter != null) {
             boolean hasFilter = false;
@@ -464,14 +452,14 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
             if (!addDepInfo && ctx.deploymentEnabled())
                 addDepInfo = true;
 
-            if (entryProcessorsBytes == null)
-                entryProcessorsBytes = marshalCollection(entryProcessors, cctx);
+            if (entryProcessorBytes == null)
+                entryProcessorBytes = marshal(entryProcessor, cctx);
 
             if (invokeArgsBytes == null)
                 invokeArgsBytes = marshalInvokeArguments(invokeArgs, cctx);
         }
         else
-            prepareMarshalCacheObjects(vals, cctx);
+            prepareMarshalCacheObject(val, cctx);
     }
 
     /** {@inheritDoc} */
@@ -480,17 +468,17 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        finishUnmarshalCacheObjects(keys, cctx, ldr);
+        finishUnmarshalCacheObject(key, cctx, ldr);
 
         if (op == TRANSFORM) {
-            if (entryProcessors == null)
-                entryProcessors = unmarshalCollection(entryProcessorsBytes, ctx, ldr);
+            if (entryProcessor == null)
+                entryProcessor = unmarshal(entryProcessorBytes, ctx, ldr);
 
             if (invokeArgs == null)
                 invokeArgs = unmarshalInvokeArguments(invokeArgsBytes, ctx, ldr);
         }
         else
-            finishUnmarshalCacheObjects(vals, cctx, ldr);
+            finishUnmarshalCacheObject(val, cctx, ldr);
 
         if (filter != null) {
             for (CacheEntryPredicate p : filter) {
@@ -530,7 +518,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 writer.incrementState();
 
             case 4:
-                if (!writer.writeCollection("entryProcessorsBytes", entryProcessorsBytes, MessageCollectionItemType.BYTE_ARR))
+                if (!writer.writeByteArray("entryProcessorBytes", entryProcessorBytes))
                     return false;
 
                 writer.incrementState();
@@ -578,7 +566,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 writer.incrementState();
 
             case 12:
-                if (!writer.writeCollection("keys", keys, MessageCollectionItemType.MSG))
+                if (!writer.writeMessage("key", key))
                     return false;
 
                 writer.incrementState();
@@ -638,7 +626,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 writer.incrementState();
 
             case 22:
-                if (!writer.writeCollection("vals", vals, MessageCollectionItemType.MSG))
+                if (!writer.writeMessage("val", val))
                     return false;
 
                 writer.incrementState();
@@ -668,7 +656,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 4:
-                entryProcessorsBytes = reader.readCollection("entryProcessorsBytes", MessageCollectionItemType.BYTE_ARR);
+                entryProcessorBytes = reader.readByteArray("entryProcessorBytes");
 
                 if (!reader.isLastRead())
                     return false;
@@ -732,7 +720,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 12:
-                keys = reader.readCollection("keys", MessageCollectionItemType.MSG);
+                key = reader.readMessage("key");
 
                 if (!reader.isLastRead())
                     return false;
@@ -820,7 +808,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 22:
-                vals = reader.readCollection("vals", MessageCollectionItemType.MSG);
+                val = reader.readMessage("val");
 
                 if (!reader.isLastRead())
                     return false;
@@ -834,14 +822,8 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
     /** {@inheritDoc} */
     @Override public void cleanup(boolean clearKeys) {
-        vals = null;
-        entryProcessors = null;
-        entryProcessorsBytes = null;
         invokeArgs = null;
         invokeArgsBytes = null;
-
-        if (clearKeys)
-            keys = null;
     }
 
     /** {@inheritDoc} */
