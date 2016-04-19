@@ -17,14 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
-import java.io.Externalizable;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-import javax.cache.expiry.ExpiryPolicy;
-import javax.cache.processor.EntryProcessor;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
 import org.apache.ignite.internal.GridDirectCollection;
@@ -50,14 +42,23 @@ import org.apache.ignite.plugin.extensions.communication.MessageWriter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.cache.expiry.ExpiryPolicy;
+import javax.cache.processor.EntryProcessor;
+import java.io.Externalizable;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+
 import static org.apache.ignite.internal.processors.cache.GridCacheOperation.DELETE;
 import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRANSFORM;
 import static org.apache.ignite.internal.processors.cache.GridCacheOperation.UPDATE;
 
 /**
- * Lite DHT cache update request sent from near node to primary node.
+ * Atomic near single update request.
  */
-public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateRequest {
+public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpdateRequest {
     /** */
     private static final long serialVersionUID = 0L;
 
@@ -162,7 +163,7 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     /**
      * Empty constructor required by {@link Externalizable}.
      */
-    public GridNearAtomicUpdateRequest() {
+    public GridNearAtomicSingleUpdateRequest() {
         // No-op.
     }
 
@@ -190,7 +191,7 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
      * @param addDepInfo Deployment info flag.
      * @param maxEntryCnt Maximum entries count.
      */
-    public GridNearAtomicUpdateRequest(
+    public GridNearAtomicSingleUpdateRequest(
         int cacheId,
         UUID nodeId,
         GridCacheVersion futVer,
@@ -332,18 +333,10 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     /**
      * @param key Key to add.
      * @param val Optional update value.
-     * @param conflictTtl Conflict TTL (optional).
-     * @param conflictExpireTime Conflict expire time (optional).
-     * @param conflictVer Conflict version (optional).
      * @param primary If given key is primary on this mapping.
      */
     @SuppressWarnings("unchecked")
-    public void addUpdateEntry(KeyCacheObject key,
-        @Nullable Object val,
-        long conflictTtl,
-        long conflictExpireTime,
-        @Nullable GridCacheVersion conflictVer,
-        boolean primary) {
+    public void addUpdateEntry(KeyCacheObject key, @Nullable Object val, boolean primary) {
         EntryProcessor<Object, Object, Object> entryProcessor = null;
 
         if (op == TRANSFORM) {
@@ -372,42 +365,6 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
         }
 
         hasPrimary |= primary;
-
-        // In case there is no conflict, do not create the list.
-        if (conflictVer != null) {
-            if (conflictVers == null) {
-                conflictVers = new ArrayList<>(initSize);
-
-                for (int i = 0; i < keys.size() - 1; i++)
-                    conflictVers.add(null);
-            }
-
-            conflictVers.add(conflictVer);
-        }
-        else if (conflictVers != null)
-            conflictVers.add(null);
-
-        if (conflictTtl >= 0) {
-            if (conflictTtls == null) {
-                conflictTtls = new GridLongList(keys.size());
-
-                for (int i = 0; i < keys.size() - 1; i++)
-                    conflictTtls.add(CU.TTL_NOT_CHANGED);
-            }
-
-            conflictTtls.add(conflictTtl);
-        }
-
-        if (conflictExpireTime >= 0) {
-            if (conflictExpireTimes == null) {
-                conflictExpireTimes = new GridLongList(keys.size());
-
-                for (int i = 0; i < keys.size() - 1; i++)
-                    conflictExpireTimes.add(CU.EXPIRE_TIME_CALCULATE);
-            }
-
-            conflictExpireTimes.add(conflictExpireTime);
-        }
     }
 
     /** {@inheritDoc} */
@@ -972,7 +929,7 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
 
     /** {@inheritDoc} */
     @Override public byte directType() {
-        return 40;
+        return -23;
     }
 
     /** {@inheritDoc} */
@@ -982,7 +939,7 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridNearAtomicUpdateRequest.class, this, "filter", Arrays.toString(filter),
+        return S.toString(GridNearAtomicSingleUpdateRequest.class, this, "filter", Arrays.toString(filter),
             "parent", super.toString());
     }
 }
