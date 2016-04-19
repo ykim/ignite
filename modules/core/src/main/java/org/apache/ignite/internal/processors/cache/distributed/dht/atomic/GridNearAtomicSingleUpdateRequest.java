@@ -800,8 +800,12 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
     /** {@inheritDoc} */
     @Override public void cleanup(boolean clearKeys) {
+        val = null;
         invokeArgs = null;
         invokeArgsBytes = null;
+
+        if (clearKeys)
+            key = null;
     }
 
     /** {@inheritDoc} */

@@ -161,23 +161,18 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
      * @param idx Key index.
      * @return Value.
      */
-    // TODO
-    @SuppressWarnings("unchecked")
     public abstract CacheObject value(int idx);
 
     /**
      * @param idx Key index.
      * @return Entry processor.
      */
-    @SuppressWarnings("unchecked")
-    // TODO
     public abstract EntryProcessor<Object, Object, Object> entryProcessor(int idx);
 
     /**
      * @param idx Index to get.
      * @return Write value - either value, or transform closure.
      */
-    // TODO
     public abstract CacheObject writeValue(int idx);
 
     /**
