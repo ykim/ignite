@@ -47,10 +47,10 @@ public enum CacheOperationFilter {
                 return null;
 
             case NO_VAL:
-                return new CacheEntrySerializablePredicate(new CacheEntryPredicateNoValue());
+                return new CacheEntryPredicateNoValue();
 
             case HAS_VAL:
-                return new CacheEntrySerializablePredicate(new CacheEntryPredicateHasValue());
+                return new CacheEntryPredicateHasValue();
 
             default:
                 assert this == EQUALS_VAL;
