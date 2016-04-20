@@ -67,6 +67,9 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
     /** Fast map flag. */
     private final boolean fastMap;
 
+    /** Optional filter. */
+    private final CacheEntryPredicate[] filter;
+
     /** Keys */
     private Collection<?> keys;
 
@@ -134,13 +137,15 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
         int remapCnt,
         boolean waitTopFut
     ) {
-        super(cctx, cache, syncMode, op, invokeArgs, retval, rawRetval, expiryPlc, filter, subjId, taskNameHash,
+        super(cctx, cache, syncMode, op, invokeArgs, retval, rawRetval, expiryPlc, subjId, taskNameHash,
             skipStore, keepBinary, remapCnt, waitTopFut);
 
         assert vals == null || vals.size() == keys.size();
         assert conflictPutVals == null || conflictPutVals.size() == keys.size();
         assert conflictRmvVals == null || conflictRmvVals.size() == keys.size();
         assert subjId != null;
+
+        this.filter = filter;
 
         this.keys = keys;
         this.vals = vals;

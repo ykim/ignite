@@ -1098,6 +1098,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                 conflictRmvVer = ctx.versions().next(dcId);
         }
 
+        // TODO: Optimize - no array allocs!
         CacheEntryPredicate[] filters = CU.filterArray(filter);
 
         if (conflictPutVal == null && conflictRmvVer == null && !isFastMap(filters, op)) {
@@ -1112,7 +1113,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                 retval,
                 false,
                 opCtx != null ? opCtx.expiry() : null,
-                filters,
+                filter,
                 ctx.subjectIdPerCall(null, opCtx),
                 ctx.kernalContext().job().currentTaskNameHash(),
                 opCtx != null && opCtx.skipStore(),

@@ -35,6 +35,17 @@ public enum CacheOperationFilter {
     /** Equals to value. */
     EQUALS_VAL;
 
+    /** Enum values. */
+    private static final CacheOperationFilter[] VALS = values();
+
+    /**
+     * @param ord Ordinal value.
+     * @return Enum value.
+     */
+    @Nullable public static CacheOperationFilter fromOrdinal(int ord) {
+        return ord < 0 || ord >= VALS.length ? null : VALS[ord];
+    }
+
     /**
      * Creare predicate from operation filter.
      *

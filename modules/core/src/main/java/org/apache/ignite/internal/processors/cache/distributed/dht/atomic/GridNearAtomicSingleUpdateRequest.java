@@ -23,6 +23,7 @@ import org.apache.ignite.internal.GridDirectTransient;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheEntryPredicate;
 import org.apache.ignite.internal.processors.cache.CacheObject;
+import org.apache.ignite.internal.processors.cache.CacheOperationFilter;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheOperation;
 import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
@@ -30,7 +31,6 @@ import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.distributed.IgniteExternalizableExpiryPolicy;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
-import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -44,7 +44,6 @@ import javax.cache.expiry.ExpiryPolicy;
 import javax.cache.processor.EntryProcessor;
 import java.io.Externalizable;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -116,7 +115,10 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     private byte[] expiryPlcBytes;
 
     /** Filter. */
-    private CacheEntryPredicate[] filter;
+    private CacheOperationFilter filter;
+
+    /** Filter value (expected value). */
+    private CacheObject filterVal;
 
     /** Subject ID. */
     private UUID subjId;
@@ -183,7 +185,8 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         boolean retval,
         @Nullable ExpiryPolicy expiryPlc,
         @Nullable Object[] invokeArgs,
-        @Nullable CacheEntryPredicate[] filter,
+        CacheOperationFilter filter,
+        @Nullable CacheObject filterVal,
         @Nullable UUID subjId,
         int taskNameHash,
         boolean skipStore,
@@ -209,6 +212,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         this.expiryPlc = expiryPlc;
         this.invokeArgs = invokeArgs;
         this.filter = filter;
+        this.filterVal = filterVal;
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
         this.skipStore = skipStore;
@@ -305,12 +309,13 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
     /** {@inheritDoc} */
     @Override @Nullable public CacheEntryPredicate[] filter() {
-        return filter;
+        // TODO: Optimzie - no allocs!
+        return CU.filterArray(filter.createPredicate(filterVal));
     }
 
     /** {@inheritDoc} */
     @Override public boolean hasFilter() {
-        return !F.isEmpty(filter);
+        return filter != null;
     }
 
     /** {@inheritDoc} */
@@ -421,21 +426,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
         prepareMarshalCacheObject(key, cctx);
 
-        if (filter != null) {
-            boolean hasFilter = false;
-
-            for (CacheEntryPredicate p : filter) {
-                if (p != null) {
-                    hasFilter = true;
-
-                    p.prepareMarshal(cctx);
-                }
-            }
-
-            if (!hasFilter)
-                filter = null;
-        }
-
         if (expiryPlc != null && expiryPlcBytes == null)
             expiryPlcBytes = CU.marshal(cctx, new IgniteExternalizableExpiryPolicy(expiryPlc));
 
@@ -452,6 +442,8 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         }
         else
             prepareMarshalCacheObject(val, cctx);
+
+        prepareMarshalCacheObject(filterVal, cctx);
     }
 
     /** {@inheritDoc} */
@@ -472,12 +464,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         else
             finishUnmarshalCacheObject(val, cctx, ldr);
 
-        if (filter != null) {
-            for (CacheEntryPredicate p : filter) {
-                if (p != null)
-                    p.finishUnmarshal(cctx, ldr);
-            }
-        }
+        finishUnmarshalCacheObject(filterVal, cctx, ldr);
 
         if (expiryPlcBytes != null && expiryPlc == null)
             expiryPlc = ctx.marshaller().unmarshal(expiryPlcBytes, U.resolveClassLoader(ldr, ctx.gridConfig()));
@@ -528,95 +515,100 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 writer.incrementState();
 
             case 7:
-                if (!writer.writeObjectArray("filter", filter, MessageCollectionItemType.MSG))
+                if (!writer.writeByte("filter", (byte)op.ordinal()))
                     return false;
 
                 writer.incrementState();
 
             case 8:
-                if (!writer.writeMessage("futVer", futVer))
+                if (!writer.writeMessage("filterVal", filterVal))
                     return false;
 
                 writer.incrementState();
 
             case 9:
-                if (!writer.writeObjectArray("invokeArgsBytes", invokeArgsBytes, MessageCollectionItemType.BYTE_ARR))
+                if (!writer.writeMessage("futVer", futVer))
                     return false;
 
                 writer.incrementState();
 
             case 10:
-                if (!writer.writeBoolean("keepBinary", keepBinary))
+                if (!writer.writeObjectArray("invokeArgsBytes", invokeArgsBytes, MessageCollectionItemType.BYTE_ARR))
                     return false;
 
                 writer.incrementState();
 
             case 11:
-                if (!writer.writeMessage("key", key))
+                if (!writer.writeBoolean("keepBinary", keepBinary))
                     return false;
 
                 writer.incrementState();
 
             case 12:
-                if (!writer.writeByte("op", op != null ? (byte)op.ordinal() : -1))
+                if (!writer.writeMessage("key", key))
                     return false;
 
                 writer.incrementState();
 
             case 13:
-                if (!writer.writeBoolean("retval", retval))
+                if (!writer.writeByte("op", op != null ? (byte)op.ordinal() : -1))
                     return false;
 
                 writer.incrementState();
 
             case 14:
-                if (!writer.writeBoolean("skipStore", skipStore))
+                if (!writer.writeBoolean("retval", retval))
                     return false;
 
                 writer.incrementState();
 
             case 15:
-                if (!writer.writeUuid("subjId", subjId))
+                if (!writer.writeBoolean("skipStore", skipStore))
                     return false;
 
                 writer.incrementState();
 
             case 16:
-                if (!writer.writeByte("syncMode", syncMode != null ? (byte)syncMode.ordinal() : -1))
+                if (!writer.writeUuid("subjId", subjId))
                     return false;
 
                 writer.incrementState();
 
             case 17:
-                if (!writer.writeInt("taskNameHash", taskNameHash))
+                if (!writer.writeByte("syncMode", syncMode != null ? (byte)syncMode.ordinal() : -1))
                     return false;
 
                 writer.incrementState();
 
             case 18:
-                if (!writer.writeBoolean("topLocked", topLocked))
+                if (!writer.writeInt("taskNameHash", taskNameHash))
                     return false;
 
                 writer.incrementState();
 
             case 19:
-                if (!writer.writeMessage("topVer", topVer))
+                if (!writer.writeBoolean("topLocked", topLocked))
                     return false;
 
                 writer.incrementState();
 
             case 20:
-                if (!writer.writeMessage("updateVer", updateVer))
+                if (!writer.writeMessage("topVer", topVer))
                     return false;
 
                 writer.incrementState();
 
             case 21:
-                if (!writer.writeMessage("val", val))
+                if (!writer.writeMessage("updateVer", updateVer))
                     return false;
 
                 writer.incrementState();
 
+            case 22:
+                if (!writer.writeMessage("val", val))
+                    return false;
+
+                writer.incrementState();
         }
 
         return true;
@@ -666,15 +658,19 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 7:
-                filter = reader.readObjectArray("filter", MessageCollectionItemType.MSG, CacheEntryPredicate.class);
+                byte filterOrd;
+
+                filterOrd = reader.readByte("filter");
 
                 if (!reader.isLastRead())
                     return false;
 
+                filter = CacheOperationFilter.fromOrdinal(filterOrd);
+
                 reader.incrementState();
 
             case 8:
-                futVer = reader.readMessage("futVer");
+                filterVal = reader.readMessage("filterVal");
 
                 if (!reader.isLastRead())
                     return false;
@@ -682,7 +678,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 9:
-                invokeArgsBytes = reader.readObjectArray("invokeArgsBytes", MessageCollectionItemType.BYTE_ARR, byte[].class);
+                futVer = reader.readMessage("futVer");
 
                 if (!reader.isLastRead())
                     return false;
@@ -690,7 +686,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 10:
-                keepBinary = reader.readBoolean("keepBinary");
+                invokeArgsBytes = reader.readObjectArray("invokeArgsBytes", MessageCollectionItemType.BYTE_ARR, byte[].class);
 
                 if (!reader.isLastRead())
                     return false;
@@ -698,7 +694,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 11:
-                key = reader.readMessage("key");
+                keepBinary = reader.readBoolean("keepBinary");
 
                 if (!reader.isLastRead())
                     return false;
@@ -706,6 +702,14 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 reader.incrementState();
 
             case 12:
+                key = reader.readMessage("key");
+
+                if (!reader.isLastRead())
+                    return false;
+
+                reader.incrementState();
+
+            case 13:
                 byte opOrd;
 
                 opOrd = reader.readByte("op");
@@ -717,7 +721,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 13:
+            case 14:
                 retval = reader.readBoolean("retval");
 
                 if (!reader.isLastRead())
@@ -725,7 +729,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 14:
+            case 15:
                 skipStore = reader.readBoolean("skipStore");
 
                 if (!reader.isLastRead())
@@ -733,7 +737,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 15:
+            case 16:
                 subjId = reader.readUuid("subjId");
 
                 if (!reader.isLastRead())
@@ -741,7 +745,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 16:
+            case 17:
                 byte syncModeOrd;
 
                 syncModeOrd = reader.readByte("syncMode");
@@ -753,7 +757,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 17:
+            case 18:
                 taskNameHash = reader.readInt("taskNameHash");
 
                 if (!reader.isLastRead())
@@ -761,7 +765,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 18:
+            case 19:
                 topLocked = reader.readBoolean("topLocked");
 
                 if (!reader.isLastRead())
@@ -769,7 +773,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 19:
+            case 20:
                 topVer = reader.readMessage("topVer");
 
                 if (!reader.isLastRead())
@@ -777,7 +781,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 20:
+            case 21:
                 updateVer = reader.readMessage("updateVer");
 
                 if (!reader.isLastRead())
@@ -785,7 +789,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
                 reader.incrementState();
 
-            case 21:
+            case 22:
                 val = reader.readMessage("val");
 
                 if (!reader.isLastRead())
@@ -815,12 +819,11 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
-        return 22;
+        return 23;
     }
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridNearAtomicSingleUpdateRequest.class, this, "filter", Arrays.toString(filter),
-            "parent", super.toString());
+        return S.toString(GridNearAtomicSingleUpdateRequest.class, this, "parent", super.toString());
     }
 }

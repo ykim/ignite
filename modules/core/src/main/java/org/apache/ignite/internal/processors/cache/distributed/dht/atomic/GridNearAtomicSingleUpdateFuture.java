@@ -25,6 +25,12 @@ import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
 import org.apache.ignite.internal.cluster.ClusterTopologyServerNotFoundException;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheEntryPredicate;
+import org.apache.ignite.internal.processors.cache.CacheEntryPredicateContainsValue;
+import org.apache.ignite.internal.processors.cache.CacheEntryPredicateHasValue;
+import org.apache.ignite.internal.processors.cache.CacheEntryPredicateNoValue;
+import org.apache.ignite.internal.processors.cache.CacheEntrySerializablePredicate;
+import org.apache.ignite.internal.processors.cache.CacheObject;
+import org.apache.ignite.internal.processors.cache.CacheOperationFilter;
 import org.apache.ignite.internal.processors.cache.CachePartialUpdateCheckedException;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheOperation;
@@ -60,6 +66,9 @@ import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRA
  * DHT atomic cache near update future.
  */
 public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpdateFuture {
+    /** Optional filter. */
+    private final CacheEntryPredicate filter;
+
     /** Keys */
     private Object key;
 
@@ -100,7 +109,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
         final boolean retval,
         final boolean rawRetval,
         @Nullable ExpiryPolicy expiryPlc,
-        final CacheEntryPredicate[] filter,
+        CacheEntryPredicate filter,
         UUID subjId,
         int taskNameHash,
         boolean skipStore,
@@ -108,10 +117,12 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
         int remapCnt,
         boolean waitTopFut
     ) {
-        super(cctx, cache, syncMode, op, invokeArgs, retval, rawRetval, expiryPlc, filter, subjId, taskNameHash,
+        super(cctx, cache, syncMode, op, invokeArgs, retval, rawRetval, expiryPlc, subjId, taskNameHash,
             skipStore, keepBinary, remapCnt, waitTopFut);
 
         assert subjId != null;
+
+        this.filter = filter;
 
         this.key = key;
         this.val = val;
@@ -624,6 +635,30 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
         GridNearAtomicAbstractUpdateRequest req;
 
         if (single) {
+            // TODO: Refactor that?
+            CacheOperationFilter filter0;
+            CacheObject filterVal = null;
+
+            if (filter == null)
+                filter0 = CacheOperationFilter.ALWAYS;
+            else {
+                if (filter instanceof CacheEntrySerializablePredicate) {
+                    CacheEntryPredicate pred = ((CacheEntrySerializablePredicate)filter).predicate();
+
+                    if (pred instanceof CacheEntryPredicateHasValue)
+                        filter0 = CacheOperationFilter.HAS_VAL;
+                    else {
+                        assert pred instanceof CacheEntryPredicateNoValue;
+
+                        filter0 = CacheOperationFilter.NO_VAL;
+                    }
+                }
+                else {
+                    filter0 = CacheOperationFilter.EQUALS_VAL;
+                    filterVal = ((CacheEntryPredicateContainsValue)filter).value();
+                }
+            }
+
             req = new GridNearAtomicSingleUpdateRequest(
                 cctx.cacheId(),
                 primary.id(),
@@ -637,7 +672,8 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 retval,
                 expiryPlc,
                 invokeArgs,
-                filter,
+                filter0,
+                filterVal,
                 subjId,
                 taskNameHash,
                 skipStore,
@@ -661,7 +697,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 retval,
                 expiryPlc,
                 invokeArgs,
-                filter,
+                CU.filterArray(filter),
                 subjId,
                 taskNameHash,
                 skipStore,

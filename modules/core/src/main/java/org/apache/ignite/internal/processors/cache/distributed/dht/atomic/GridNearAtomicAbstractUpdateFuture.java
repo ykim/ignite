@@ -20,7 +20,6 @@ package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
-import org.apache.ignite.internal.processors.cache.CacheEntryPredicate;
 import org.apache.ignite.internal.processors.cache.CachePartialUpdateCheckedException;
 import org.apache.ignite.internal.processors.cache.GridCacheAtomicFuture;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
@@ -75,9 +74,6 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
 
     /** Expiry policy. */
     protected final ExpiryPolicy expiryPlc;
-
-    /** Optional filter. */
-    protected final CacheEntryPredicate[] filter;
 
     /** Subject ID. */
     protected final UUID subjId;
@@ -141,7 +137,6 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
      * @param retval Return value flag.
      * @param rawRetval Raw return value flag.
      * @param expiryPlc Expiry policy.
-     * @param filter Filter.
      * @param subjId Subject ID.
      * @param taskNameHash Task name hash.
      * @param skipStore Skip store flag.
@@ -158,7 +153,6 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
         boolean retval,
         boolean rawRetval,
         @Nullable ExpiryPolicy expiryPlc,
-        CacheEntryPredicate[] filter,
         UUID subjId,
         int taskNameHash,
         boolean skipStore,
@@ -177,7 +171,6 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridFutureAdapt
         this.retval = retval;
         this.rawRetval = rawRetval;
         this.expiryPlc = expiryPlc;
-        this.filter = filter;
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
         this.skipStore = skipStore;

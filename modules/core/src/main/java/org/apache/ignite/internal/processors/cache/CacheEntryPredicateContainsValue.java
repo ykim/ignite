@@ -66,6 +66,13 @@ public class CacheEntryPredicateContainsValue extends CacheEntryPredicateAdapter
         return F.eq(thisVal, cacheVal);
     }
 
+    /**
+     * @return Value.
+     */
+    public CacheObject value() {
+        return val;
+    }
+
     /** {@inheritDoc} */
     @Override public void finishUnmarshal(GridCacheContext ctx, ClassLoader ldr) throws IgniteCheckedException {
         val.finishUnmarshal(ctx.cacheObjectContext(), ldr);
