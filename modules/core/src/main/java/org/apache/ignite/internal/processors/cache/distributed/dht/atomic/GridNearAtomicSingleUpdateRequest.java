@@ -59,6 +59,24 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     /** */
     private static final long serialVersionUID = 0L;
 
+    /** Flag: fast map. */
+    private static final byte FLAG_FAST_MAP = 0x01;
+
+    /** Flag: topology locked. */
+    private static final byte FLAG_TOP_LOCKED = 0x02;
+
+    /** Flag: return value. */
+    private static final byte FLAG_RET_VAL = 0x04;
+
+    /** Flag: skip store. */
+    private static final byte FLAG_SKIP_STORE = 0x08;
+
+    /** Flag: client request. */
+    private static final byte FLAG_CLIENT_REQ = 0x10;
+
+    /** Flag: keep binary. */
+    private static final byte FLAG_KEEP_BINARY = 0x20;
+
     /** Target node ID. */
     @GridDirectTransient
     private UUID nodeId;
@@ -743,22 +761,22 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         byte flags = 0;
 
         if (fastMap)
-            flags |= 0x1;
+            flags |= FLAG_FAST_MAP;
 
         if (topLocked)
-            flags |= 0x2;
+            flags |= FLAG_TOP_LOCKED;
 
         if (retval)
-            flags |= 0x4;
+            flags |= FLAG_RET_VAL;
 
         if (skipStore)
-            flags |= 0x8;
+            flags |= FLAG_SKIP_STORE;
 
         if (clientReq)
-            flags |= 0x10;
+            flags |= FLAG_CLIENT_REQ;
 
         if (keepBinary)
-            flags |= 0x20;
+            flags |= FLAG_KEEP_BINARY;
 
         return flags;
     }
@@ -767,12 +785,23 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
      * @param flags Flags.
      */
     private void setFlags(byte flags) {
-        fastMap = (flags & 0x1) == 0x1;
-        topLocked = (flags & 0x2) == 0x2;
-        retval = (flags & 0x4) == 0x4;
-        skipStore = (flags & 0x8) == 0x8;
-        clientReq = (flags & 0x10) == 0x10;
-        keepBinary = (flags & 0x20) == 0x20;
+        fastMap = hasFlag(flags, FLAG_FAST_MAP);
+        topLocked = hasFlag(flags, FLAG_TOP_LOCKED);
+        retval = hasFlag(flags, FLAG_RET_VAL);
+        skipStore = hasFlag(flags, FLAG_SKIP_STORE);
+        clientReq = hasFlag(flags, FLAG_CLIENT_REQ);
+        keepBinary = hasFlag(flags, FLAG_KEEP_BINARY);
+    }
+
+    /**
+     * Check if certain flag is present.
+     *
+     * @param flags Flags.
+     * @param flag Flag.
+     * @return {@code True} if flag is present.
+     */
+    private static boolean hasFlag(byte flags, byte flag) {
+        return (flags & flag) == flag;
     }
 
     /** {@inheritDoc} */
