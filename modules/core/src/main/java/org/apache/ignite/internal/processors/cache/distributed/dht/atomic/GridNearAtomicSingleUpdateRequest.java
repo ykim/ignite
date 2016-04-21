@@ -509,7 +509,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
                 writer.incrementState();
 
             case 6:
-                if (!writer.writeByte("filter", (byte)op.ordinal()))
+                if (!writer.writeByte("filter", (byte)filter.ordinal()))
                     return false;
 
                 writer.incrementState();
@@ -767,12 +767,12 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
      * @param flags Flags.
      */
     private void setFlags(byte flags) {
-        fastMap = (flags | 0x1) == 0x1;
-        topLocked = (flags | 0x2) == 0x2;
-        retval = (flags | 0x4) == 0x4;
-        skipStore = (flags | 0x8) == 0x8;
-        clientReq = (flags | 0x10) == 0x10;
-        keepBinary = (flags | 0x20) == 0x20;
+        fastMap = (flags & 0x1) == 0x1;
+        topLocked = (flags & 0x2) == 0x2;
+        retval = (flags & 0x4) == 0x4;
+        skipStore = (flags & 0x8) == 0x8;
+        clientReq = (flags & 0x10) == 0x10;
+        keepBinary = (flags & 0x20) == 0x20;
     }
 
     /** {@inheritDoc} */
