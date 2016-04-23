@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.cache;
 
 import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.internal.processors.cache.distributed.dht.atomic.GridNearAtomicSingleUpdateRequest;
 import org.apache.ignite.internal.processors.cache.distributed.dht.atomic.GridNearAtomicUpdateRequest;
 
 /**
@@ -31,28 +32,28 @@ public class IgniteCacheAtomicStopBusySelfTest extends IgniteCacheAbstractStopBu
 
     /** {@inheritDoc} */
     @Override public void testPut() throws Exception {
-        bannedMsg.set(GridNearAtomicUpdateRequest.class);
+        bannedMsg.set(GridNearAtomicSingleUpdateRequest.class);
 
         super.testPut();
     }
 
     /** {@inheritDoc} */
     @Override public void testPutBatch() throws Exception {
-        bannedMsg.set(GridNearAtomicUpdateRequest.class);
+        bannedMsg.set(GridNearAtomicSingleUpdateRequest.class);
 
         super.testPut();
     }
 
     /** {@inheritDoc} */
     @Override public void testPutAsync() throws Exception {
-        bannedMsg.set(GridNearAtomicUpdateRequest.class);
+        bannedMsg.set(GridNearAtomicSingleUpdateRequest.class);
 
         super.testPut();
     }
 
     /** {@inheritDoc} */
     @Override public void testRemove() throws Exception {
-        bannedMsg.set(GridNearAtomicUpdateRequest.class);
+        bannedMsg.set(GridNearAtomicSingleUpdateRequest.class);
 
         super.testPut();
     }
