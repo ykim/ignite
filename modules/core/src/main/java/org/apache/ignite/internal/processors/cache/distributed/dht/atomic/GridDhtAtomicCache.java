@@ -1097,10 +1097,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                 conflictRmvVer = ctx.versions().next(dcId);
         }
 
-        // TODO: Optimize - no array allocs!
-        CacheEntryPredicate[] filters = CU.filterArray(filter);
-
-        if (conflictPutVal == null && conflictRmvVer == null && !isFastMap(filters, op)) {
+        if (conflictPutVal == null && conflictRmvVer == null && !isFastMap(filter, op)) {
             return new GridNearAtomicSingleUpdateFuture(
                 ctx,
                 this,
@@ -1135,7 +1132,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                 retval,
                 false,
                 opCtx != null ? opCtx.expiry() : null,
-                filters,
+                CU.filterArray(filter),
                 ctx.subjectIdPerCall(null, opCtx),
                 ctx.kernalContext().job().currentTaskNameHash(),
                 opCtx != null && opCtx.skipStore(),
@@ -1153,7 +1150,28 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
      * @return {@code True} if fast-map.
      */
     public boolean isFastMap(CacheEntryPredicate[] filters, GridCacheOperation op) {
-        return F.isEmpty(filters) && op != TRANSFORM && ctx.config().getWriteSynchronizationMode() == FULL_SYNC &&
+        return F.isEmpty(filters) && isFastMap0(op);
+    }
+
+    /**
+     * Whether this is fast-map operation.
+     *
+     * @param filter Filter.
+     * @param op Operation.
+     * @return {@code True} if fast-map.
+     */
+    public boolean isFastMap(@Nullable CacheEntryPredicate filter, GridCacheOperation op) {
+        return filter == null && isFastMap0(op);
+    }
+
+    /**
+     * Internal fast-map routine.
+     *
+     * @param op Operation.
+     * @return Result.
+     */
+    private boolean isFastMap0(GridCacheOperation op) {
+        return op != TRANSFORM && ctx.config().getWriteSynchronizationMode() == FULL_SYNC &&
             ctx.config().getAtomicWriteOrderMode() == CLOCK &&
             !(ctx.writeThrough() && ctx.config().getInterceptor() != null);
     }
