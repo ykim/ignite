@@ -327,7 +327,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
     /** {@inheritDoc} */
     @Override @Nullable public CacheEntryPredicate[] filter() {
-        // TODO: Optimize - no allocs!
         return CU.filterArray(filter.createPredicate(filterVal));
     }
 
