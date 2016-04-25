@@ -66,6 +66,15 @@ import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRA
  * DHT atomic cache near update future.
  */
 public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpdateFuture {
+    /** Failure detection timeout feature major version. */
+    private static final byte SINGLE_REQ_MAJOR_VER = 1;
+
+    /** Failure detection timeout feature minor version. */
+    private static final byte SINGLE_REQ_MINOR_VER = 6;
+
+    /** Failure detection timeout feature maintainance version. */
+    private static final byte SINGLE_REQ_MAINT_VER = 0;
+
     /** Optional filter. */
     private final CacheEntryPredicate filter;
 
@@ -616,26 +625,16 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
             throw new ClusterTopologyServerNotFoundException("Failed to map keys for cache (all partition nodes " +
                 "left the grid).");
 
-        // TODO: Can we change it to affNodes.get(0)?
         ClusterNode primary = cctx.affinity().primary(cacheKey, topVer);
 
         assert primary != null;
 
-        boolean single = true;
-
-        // TODO: Instead, we could implement a method on affinity to check if all nodes are greater than particular ver.
-        for (ClusterNode affNode : affNodes) {
-            if (!affNode.version().greaterThanEqual(1, 1, 6)) {
-                single = false;
-
-                break;
-            }
-        }
+        boolean single =
+            primary.version().greaterThanEqual(SINGLE_REQ_MAJOR_VER, SINGLE_REQ_MINOR_VER, SINGLE_REQ_MAINT_VER);
 
         GridNearAtomicAbstractUpdateRequest req;
 
         if (single) {
-            // TODO: Refactor that?
             CacheOperationFilter filter0;
             CacheObject filterVal = null;
 

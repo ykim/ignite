@@ -110,7 +110,6 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
     /**
      * @return Filter.
      */
-    // TODO
     @Nullable public abstract CacheEntryPredicate[] filter();
 
     /**
@@ -133,7 +132,6 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
     /**
      * @return Keys for this update request.
      */
-    // TODO
     public abstract List<KeyCacheObject> keys();
 
     /**
@@ -144,7 +142,6 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
     /**
      * @return Values for this update request.
      */
-    // TODO
     public abstract List<?> values();
 
     /**
@@ -178,28 +175,24 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
     /**
      * @return Conflict versions.
      */
-    // TODO
     @Nullable public abstract List<GridCacheVersion> conflictVersions();
 
     /**
      * @param idx Index.
      * @return Conflict version.
      */
-    // TODO
     @Nullable public abstract GridCacheVersion conflictVersion(int idx);
 
     /**
      * @param idx Index.
      * @return Conflict TTL.
      */
-    // TODO
     public abstract long conflictTtl(int idx);
 
     /**
      * @param idx Index.
      * @return Conflict expire time.
      */
-    // TODO
     public abstract long conflictExpireTime(int idx);
 
     /**
@@ -211,13 +204,11 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
      * @param res Response.
      * @return {@code True} if current response was {@code null}.
      */
-    // TODO
     public abstract boolean onResponse(GridNearAtomicUpdateResponse res);
 
     /**
      * @return Response.
      */
-    // TODO
     @Nullable public abstract GridNearAtomicUpdateResponse response();
 
     /**
