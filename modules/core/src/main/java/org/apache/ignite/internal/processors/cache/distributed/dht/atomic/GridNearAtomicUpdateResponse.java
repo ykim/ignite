@@ -178,7 +178,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
     }
 
     /** {@inheritDoc} */
-    @Override public KeyCacheObject remapKey(int idx) {
+    @Override public KeyCacheObject remapKey(GridNearAtomicAbstractUpdateRequest req, int idx) {
         return remapKeys.get(idx);
     }
 

@@ -103,7 +103,7 @@ public abstract class GridNearAtomicAbstractUpdateResponse extends GridCacheMess
      * @param idx Index.
      * @return Remap key.
      */
-    public abstract KeyCacheObject remapKey(int idx);
+    public abstract KeyCacheObject remapKey(GridNearAtomicAbstractUpdateRequest req, int idx);
 
     /**
      * @return Remap keys count.

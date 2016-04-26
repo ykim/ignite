@@ -305,7 +305,7 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
                     remapKeys = U.newHashSet(res.remapKeysCount());
 
                 for (int i = 0; i < res.remapKeysCount(); i++)
-                    remapKeys.add(res.remapKey(i));
+                    remapKeys.add(res.remapKey(req, i));
 
                 if (mapErrTopVer == null || mapErrTopVer.compareTo(req.topologyVersion()) < 0)
                     mapErrTopVer = req.topologyVersion();

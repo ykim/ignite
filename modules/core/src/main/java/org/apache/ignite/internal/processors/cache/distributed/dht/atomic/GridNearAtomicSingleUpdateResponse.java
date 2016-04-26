@@ -68,7 +68,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
     /** Keys that should be remapped. */
     @GridToStringInclude
-    private KeyCacheObject remapKey;
+    private boolean remapKey;
 
     /** Indexes of keys for which values were generated on primary node (used if originating node has near cache). */
     private boolean nearValsIdx;
@@ -167,19 +167,19 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
     @Override public void remapKeys(GridNearAtomicAbstractUpdateRequest req) {
         assert req instanceof GridNearAtomicSingleUpdateRequest;
 
-        remapKey = req.key(0);
+        remapKey = true;
     }
 
     /** {@inheritDoc} */
-    @Override public KeyCacheObject remapKey(int idx) {
+    @Override public KeyCacheObject remapKey(GridNearAtomicAbstractUpdateRequest req, int idx) {
         assert idx == 0;
 
-        return remapKey;
+        return req.key(0);
     }
 
     /** {@inheritDoc} */
     @Override public int remapKeysCount() {
-        return remapKey == null ? 0 : 1;
+        return remapKey ? 1 : 0;
     }
 
     /** {@inheritDoc} */
@@ -309,7 +309,6 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        prepareMarshalCacheObject(remapKey, cctx);
         prepareMarshalCacheObject(nearVal, cctx);
 
         if (ret != null)
@@ -325,7 +324,6 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        finishUnmarshalCacheObject(remapKey, cctx, ldr);
         finishUnmarshalCacheObject(nearVal, cctx, ldr);
 
         if (ret != null)
@@ -404,7 +402,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 writer.incrementState();
 
             case 12:
-                if (!writer.writeMessage("remapKey", remapKey))
+                if (!writer.writeBoolean("remapKey", remapKey))
                     return false;
 
                 writer.incrementState();
@@ -504,7 +502,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 reader.incrementState();
 
             case 12:
-                remapKey = reader.readMessage("remapKey");
+                remapKey = reader.readBoolean("remapKey");
 
                 if (!reader.isLastRead())
                     return false;
