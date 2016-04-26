@@ -408,6 +408,11 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     }
 
     /** {@inheritDoc} */
+    @Override public KeyCacheObject key(int idx) {
+        return keys.get(idx);
+    }
+
+    /** {@inheritDoc} */
     @Override public List<?> values() {
         return op == TRANSFORM ? entryProcessors : vals;
     }

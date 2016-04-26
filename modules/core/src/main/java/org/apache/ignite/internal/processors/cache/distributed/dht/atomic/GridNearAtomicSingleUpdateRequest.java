@@ -344,6 +344,13 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     }
 
     /** {@inheritDoc} */
+    @Override public KeyCacheObject key(int idx) {
+        assert idx == 0;
+
+        return key;
+    }
+
+    /** {@inheritDoc} */
     @Override public List<?> values() {
         return op == TRANSFORM ? Collections.singletonList(entryProcessor) : Collections.singletonList(val);
     }

@@ -156,7 +156,7 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
             if (F.contains(skipped, i))
                 continue;
 
-            KeyCacheObject key = req.keys().get(i);
+            KeyCacheObject key = req.key(i);
 
             if (F.contains(failed, key))
                 continue;

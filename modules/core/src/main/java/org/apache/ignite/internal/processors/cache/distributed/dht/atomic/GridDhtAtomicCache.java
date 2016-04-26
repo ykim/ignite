@@ -1502,9 +1502,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         GridNearAtomicUpdateResponse res = new GridNearAtomicUpdateResponse(ctx.cacheId(), nodeId, req.futureVersion(),
             ctx.deploymentEnabled());
 
-        List<KeyCacheObject> keys = req.keys();
-
-        assert !req.returnValue() || (req.operation() == TRANSFORM || keys.size() == 1);
+        assert !req.returnValue() || (req.operation() == TRANSFORM || req.keysCount() == 1);
 
         GridDhtAtomicUpdateFuture dhtFut = null;
 
@@ -1517,7 +1515,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         try {
             // If batch store update is enabled, we need to lock all entries.
             // First, need to acquire locks on cache entries, then check filter.
-            List<GridDhtCacheEntry> locked = lockEntries(keys, req.topologyVersion());
+            List<GridDhtCacheEntry> locked = lockEntries(req);
 
             Collection<IgniteBiTuple<GridDhtCacheEntry, GridCacheVersion>> deleted = null;
 
@@ -1528,7 +1526,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                 try {
                     if (top.stopping()) {
-                        res.addFailedKeys(keys, new IgniteCheckedException("Failed to perform cache operation " +
+                        res.addFailedKeys(req.keys(), new IgniteCheckedException("Failed to perform cache operation " +
                             "(cache is stopped): " + name()));
 
                         completionCb.apply(req, res);
@@ -1576,7 +1574,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                         GridCacheReturn retVal = null;
 
-                        if (keys.size() > 1 &&                             // Several keys ...
+                        if (req.keysCount() > 1 &&                         // Several keys ...
                             writeThrough() && !req.skipStore() &&          // and store is enabled ...
                             !ctx.store().isLocal() &&                      // and this is not local store ...
                             !ctx.dr().receiveEnabled()                     // and no DR.
@@ -1671,7 +1669,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             // an attempt to use cleaned resources.
             U.error(log, "Unexpected exception during cache update", e);
 
-            res.addFailedKeys(keys, e);
+            res.addFailedKeys(req.keys(), e);
 
             completionCb.apply(req, res);
 
@@ -1684,7 +1682,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         if (remap) {
             assert dhtFut == null;
 
-            res.remapKeys(keys);
+            res.remapKeys(req.keys());
 
             completionCb.apply(req, res);
         }
@@ -2155,8 +2153,6 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         GridCacheReturn retVal = null;
         Collection<IgniteBiTuple<GridDhtCacheEntry, GridCacheVersion>> deleted = null;
 
-        List<KeyCacheObject> keys = req.keys();
-
         AffinityTopologyVersion topVer = req.topologyVersion();
 
         boolean checkReaders = hasNear || ctx.discovery().hasNearCache(name(), topVer);
@@ -2166,8 +2162,8 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         boolean intercept = ctx.config().getInterceptor() != null;
 
         // Avoid iterator creation.
-        for (int i = 0; i < keys.size(); i++) {
-            KeyCacheObject k = keys.get(i);
+        for (int i = 0; i < req.keysCount(); i++) {
+            KeyCacheObject k = req.key(i);
 
             GridCacheOperation op = req.operation();
 
@@ -2302,7 +2298,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                 if (updRes.removeVersion() != null) {
                     if (deleted == null)
-                        deleted = new ArrayList<>(keys.size());
+                        deleted = new ArrayList<>(req.keysCount());
 
                     deleted.add(F.t(entry, updRes.removeVersion()));
                 }
@@ -2615,21 +2611,18 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
     /**
      * Acquires java-level locks on cache entries. Returns collection of locked entries.
      *
-     * @param keys Keys to lock.
-     * @param topVer Topology version to lock on.
+     * @param req Request.
      * @return Collection of locked entries.
      * @throws GridDhtInvalidPartitionException If entry does not belong to local node. If exception is thrown,
      *      locks are released.
      */
     @SuppressWarnings("ForLoopReplaceableByForEach")
-    private List<GridDhtCacheEntry> lockEntries(List<KeyCacheObject> keys, AffinityTopologyVersion topVer)
+    private List<GridDhtCacheEntry> lockEntries(GridNearAtomicAbstractUpdateRequest req)
         throws GridDhtInvalidPartitionException {
-        if (keys.size() == 1) {
-            KeyCacheObject key = keys.get(0);
-
+        if (req.keysCount() == 1) {
             while (true) {
                 try {
-                    GridDhtCacheEntry entry = entryExx(key, topVer);
+                    GridDhtCacheEntry entry = entryExx(req.key(0), req.topologyVersion());
 
                     GridUnsafe.monitorEnter(entry);
 
@@ -2648,12 +2641,12 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             }
         }
         else {
-            List<GridDhtCacheEntry> locked = new ArrayList<>(keys.size());
+            List<GridDhtCacheEntry> locked = new ArrayList<>(req.keysCount());
 
             while (true) {
-                for (KeyCacheObject key : keys) {
+                for (int i = 0; i < req.keysCount(); i++) {
                     try {
-                        GridDhtCacheEntry entry = entryExx(key, topVer);
+                        GridDhtCacheEntry entry = entryExx(req.key(i), req.topologyVersion());
 
                         locked.add(entry);
                     }

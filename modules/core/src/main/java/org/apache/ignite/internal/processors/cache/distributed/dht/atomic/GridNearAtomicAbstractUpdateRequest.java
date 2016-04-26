@@ -165,6 +165,12 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
     public abstract int keysCount();
 
     /**
+     * @param idx Key index.
+     * @return Key.
+     */
+    public abstract KeyCacheObject key(int idx);
+
+    /**
      * @return Values for this update request.
      */
     public abstract List<?> values();
