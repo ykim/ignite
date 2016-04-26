@@ -274,6 +274,12 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             }
         });
 
+        ctx.io().addHandler(ctx.cacheId(), GridNearAtomicSingleUpdateResponse.class, new CI2<UUID, GridNearAtomicSingleUpdateResponse>() {
+            @Override public void apply(UUID nodeId, GridNearAtomicSingleUpdateResponse res) {
+                processNearAtomicUpdateResponse(nodeId, res);
+            }
+        });
+
         ctx.io().addHandler(ctx.cacheId(), GridDhtAtomicUpdateRequest.class, new CI2<UUID, GridDhtAtomicUpdateRequest>() {
             @Override public void apply(UUID nodeId, GridDhtAtomicUpdateRequest req) {
                 processDhtAtomicUpdateRequest(nodeId, req);
@@ -1494,6 +1500,25 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
     }
 
     /**
+     * Create near update response.
+     *
+     * @param nodeId Node ID.
+     * @param req Request.
+     * @return Response.
+     */
+    private GridNearAtomicAbstractUpdateResponse createNearResponse(UUID nodeId,
+        GridNearAtomicAbstractUpdateRequest req) {
+        if (req.isSingle()) {
+            return new GridNearAtomicSingleUpdateResponse(ctx.cacheId(), nodeId, req.futureVersion(),
+                ctx.deploymentEnabled());
+        }
+        else {
+            return new GridNearAtomicUpdateResponse(ctx.cacheId(), nodeId, req.futureVersion(),
+                ctx.deploymentEnabled());
+        }
+    }
+
+    /**
      * Executes local update after preloader fetched values.
      *
      * @param nodeId Node ID.
@@ -1505,8 +1530,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         GridNearAtomicAbstractUpdateRequest req,
         CI2<GridNearAtomicAbstractUpdateRequest, GridNearAtomicAbstractUpdateResponse> completionCb
     ) {
-        GridNearAtomicAbstractUpdateResponse res = new GridNearAtomicUpdateResponse(ctx.cacheId(), nodeId,
-            req.futureVersion(), ctx.deploymentEnabled());
+        GridNearAtomicAbstractUpdateResponse res = createNearResponse(nodeId, req);
 
         assert !req.returnValue() || (req.operation() == TRANSFORM || req.keysCount() == 1);
 

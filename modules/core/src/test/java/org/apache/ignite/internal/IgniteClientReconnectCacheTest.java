@@ -51,6 +51,7 @@ import org.apache.ignite.events.DiscoveryEvent;
 import org.apache.ignite.events.Event;
 import org.apache.ignite.internal.managers.communication.GridIoMessage;
 import org.apache.ignite.internal.managers.discovery.GridDiscoveryManager;
+import org.apache.ignite.internal.processors.cache.distributed.dht.atomic.GridNearAtomicSingleUpdateResponse;
 import org.apache.ignite.internal.processors.cache.distributed.dht.atomic.GridNearAtomicUpdateResponse;
 import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPartitionsFullMessage;
 import org.apache.ignite.internal.processors.cache.distributed.near.GridNearGetResponse;
@@ -815,7 +816,7 @@ public class IgniteClientReconnectCacheTest extends IgniteClientReconnectAbstrac
                             Collection<Class> clss = new HashSet<>();
 
                             clss.add(GridNearAtomicUpdateResponse.class);
-                            // TODO: Add single.
+                            clss.add(GridNearAtomicSingleUpdateResponse.class);
 
                             checkOperationInProgressFails(client, ccfg, clss, putOp);
                         }

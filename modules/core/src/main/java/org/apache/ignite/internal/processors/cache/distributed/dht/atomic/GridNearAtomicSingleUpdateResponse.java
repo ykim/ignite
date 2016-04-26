@@ -522,7 +522,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
     /** {@inheritDoc} */
     @Override public byte directType() {
-        return 41;
+        return -24;
     }
 
     /** {@inheritDoc} */

@@ -153,7 +153,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 this.req : null;
 
             if (req != null && req.response() == null) {
-                res = new GridNearAtomicUpdateResponse(cctx.cacheId(),
+                res = new GridNearAtomicSingleUpdateResponse(cctx.cacheId(),
                     nodeId,
                     req.futureVersion(),
                     cctx.deploymentEnabled());
@@ -492,7 +492,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
      */
     void onSendError(GridNearAtomicAbstractUpdateRequest req, IgniteCheckedException e) {
         synchronized (mux) {
-            GridNearAtomicAbstractUpdateResponse res = new GridNearAtomicUpdateResponse(cctx.cacheId(),
+            GridNearAtomicAbstractUpdateResponse res = new GridNearAtomicSingleUpdateResponse(cctx.cacheId(),
                 req.nodeId(),
                 req.futureVersion(),
                 cctx.deploymentEnabled());
