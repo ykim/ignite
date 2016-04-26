@@ -18,7 +18,6 @@
 package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
 import org.apache.ignite.IgniteCheckedException;
-import org.apache.ignite.internal.GridDirectCollection;
 import org.apache.ignite.internal.GridDirectTransient;
 import org.apache.ignite.internal.processors.cache.CacheObject;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
@@ -26,20 +25,16 @@ import org.apache.ignite.internal.processors.cache.GridCacheReturn;
 import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
-import org.apache.ignite.internal.util.GridLongList;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
-import org.apache.ignite.plugin.extensions.communication.MessageCollectionItemType;
 import org.apache.ignite.plugin.extensions.communication.MessageReader;
 import org.apache.ignite.plugin.extensions.communication.MessageWriter;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Externalizable;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -76,26 +71,23 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
     private KeyCacheObject remapKey;
 
     /** Indexes of keys for which values were generated on primary node (used if originating node has near cache). */
-    @GridDirectCollection(int.class)
-    private List<Integer> nearValsIdxs;
+    private boolean nearValsIdx;
 
     /** Indexes of keys for which update was skipped (used if originating node has near cache). */
-    @GridDirectCollection(int.class)
-    private List<Integer> nearSkipIdxs;
+    private boolean nearSkipIdx;
 
     /** Values generated on primary node which should be put to originating node's near cache. */
     @GridToStringInclude
-    @GridDirectCollection(CacheObject.class)
-    private List<CacheObject> nearVals;
+    private CacheObject nearVal;
 
     /** Version generated on primary node to be used for originating node's near cache update. */
     private GridCacheVersion nearVer;
 
     /** Near TTLs. */
-    private GridLongList nearTtls;
+    private long nearTtl = -1L;
 
     /** Near expire times. */
-    private GridLongList nearExpireTimes;
+    private long nearExpireTime = -1L;
 
     /**
      * Empty constructor required by {@link Externalizable}.
@@ -191,65 +183,35 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
     /** {@inheritDoc} */
     @Override public void addNearValue(int keyIdx, @Nullable CacheObject val, long ttl, long expireTime) {
-        if (nearValsIdxs == null) {
-            nearValsIdxs = new ArrayList<>();
-            nearVals = new ArrayList<>();
-        }
+        assert keyIdx == 0;
 
         addNearTtl(keyIdx, ttl, expireTime);
 
-        nearValsIdxs.add(keyIdx);
-        nearVals.add(val);
+        nearValsIdx = true;
+        nearVal = val;
     }
 
     /** {@inheritDoc} */
     @SuppressWarnings("ForLoopReplaceableByForEach")
     @Override public void addNearTtl(int keyIdx, long ttl, long expireTime) {
-        if (ttl >= 0) {
-            if (nearTtls == null) {
-                nearTtls = new GridLongList(16);
+        assert keyIdx == 0;
 
-                for (int i = 0; i < keyIdx; i++)
-                    nearTtls.add(-1L);
-            }
-        }
-
-        if (nearTtls != null)
-            nearTtls.add(ttl);
-
-        if (expireTime >= 0) {
-            if (nearExpireTimes == null) {
-                nearExpireTimes = new GridLongList(16);
-
-                for (int i = 0; i < keyIdx; i++)
-                    nearExpireTimes.add(-1);
-            }
-        }
-
-        if (nearExpireTimes != null)
-            nearExpireTimes.add(expireTime);
+        nearTtl = ttl;
+        nearExpireTime = expireTime;
     }
 
     /** {@inheritDoc} */
     @Override public long nearExpireTime(int idx) {
-        if (nearExpireTimes != null) {
-            assert idx >= 0 && idx < nearExpireTimes.size();
+        assert idx == 0;
 
-            return nearExpireTimes.get(idx);
-        }
-
-        return -1L;
+        return nearExpireTime;
     }
 
     /** {@inheritDoc} */
     @Override public long nearTtl(int idx) {
-        if (nearTtls != null) {
-            assert idx >= 0 && idx < nearTtls.size();
+        assert idx == 0;
 
-            return nearTtls.get(idx);
-        }
-
-        return -1L;
+        return nearTtl;
     }
 
     /** {@inheritDoc} */
@@ -264,27 +226,32 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
     /** {@inheritDoc} */
     @Override public void addSkippedIndex(int keyIdx) {
-        if (nearSkipIdxs == null)
-            nearSkipIdxs = new ArrayList<>();
+        assert keyIdx == 0;
 
-        nearSkipIdxs.add(keyIdx);
+        nearSkipIdx = true;
 
         addNearTtl(keyIdx, -1L, -1L);
     }
 
     /** {@inheritDoc} */
     @Override public boolean isNearSkippedIndex(int idx) {
-        return nearSkipIdxs != null && nearSkipIdxs.contains(idx);
+        assert idx == 0;
+
+        return nearSkipIdx;
     }
 
     /** {@inheritDoc} */
     @Override public boolean isNearValueIndex(int idx) {
-        return nearValsIdxs != null && nearValsIdxs.contains(idx);
+        assert idx == 0;
+
+        return nearValsIdx;
     }
 
     /** {@inheritDoc} */
     @Override @Nullable public CacheObject nearValue(int idx) {
-        return nearVals.get(idx);
+        assert idx == 0;
+
+        return nearVal;
     }
 
     /** {@inheritDoc} */
@@ -338,8 +305,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
         prepareMarshalCacheObject(failedKey, cctx);
         prepareMarshalCacheObject(remapKey, cctx);
-
-        prepareMarshalCacheObjects(nearVals, cctx);
+        prepareMarshalCacheObject(nearVal, cctx);
 
         if (ret != null)
             ret.prepareMarshal(cctx);
@@ -356,8 +322,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
         finishUnmarshalCacheObject(failedKey, cctx, ldr);
         finishUnmarshalCacheObject(remapKey, cctx, ldr);
-
-        finishUnmarshalCacheObjects(nearVals, cctx, ldr);
+        finishUnmarshalCacheObject(nearVal, cctx, ldr);
 
         if (ret != null)
             ret.finishUnmarshal(cctx, ldr);
@@ -399,31 +364,31 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 writer.incrementState();
 
             case 6:
-                if (!writer.writeMessage("nearExpireTimes", nearExpireTimes))
+                if (!writer.writeLong("nearExpireTime", nearExpireTime))
                     return false;
 
                 writer.incrementState();
 
             case 7:
-                if (!writer.writeCollection("nearSkipIdxs", nearSkipIdxs, MessageCollectionItemType.INT))
+                if (!writer.writeBoolean("nearSkipIdx", nearSkipIdx))
                     return false;
 
                 writer.incrementState();
 
             case 8:
-                if (!writer.writeMessage("nearTtls", nearTtls))
+                if (!writer.writeLong("nearTtl", nearTtl))
                     return false;
 
                 writer.incrementState();
 
             case 9:
-                if (!writer.writeCollection("nearVals", nearVals, MessageCollectionItemType.MSG))
+                if (!writer.writeMessage("nearVal", nearVal))
                     return false;
 
                 writer.incrementState();
 
             case 10:
-                if (!writer.writeCollection("nearValsIdxs", nearValsIdxs, MessageCollectionItemType.INT))
+                if (!writer.writeBoolean("nearValsIdx", nearValsIdx))
                     return false;
 
                 writer.incrementState();
@@ -487,7 +452,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 reader.incrementState();
 
             case 6:
-                nearExpireTimes = reader.readMessage("nearExpireTimes");
+                nearExpireTime = reader.readLong("nearExpireTime");
 
                 if (!reader.isLastRead())
                     return false;
@@ -495,7 +460,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 reader.incrementState();
 
             case 7:
-                nearSkipIdxs = reader.readCollection("nearSkipIdxs", MessageCollectionItemType.INT);
+                nearSkipIdx = reader.readBoolean("nearSkipIdx");
 
                 if (!reader.isLastRead())
                     return false;
@@ -503,7 +468,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 reader.incrementState();
 
             case 8:
-                nearTtls = reader.readMessage("nearTtls");
+                nearTtl = reader.readLong("nearTtl");
 
                 if (!reader.isLastRead())
                     return false;
@@ -511,7 +476,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 reader.incrementState();
 
             case 9:
-                nearVals = reader.readCollection("nearVals", MessageCollectionItemType.MSG);
+                nearVal = reader.readMessage("nearVal");
 
                 if (!reader.isLastRead())
                     return false;
@@ -519,7 +484,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 reader.incrementState();
 
             case 10:
-                nearValsIdxs = reader.readCollection("nearValsIdxs", MessageCollectionItemType.INT);
+                nearValsIdx = reader.readBoolean("nearValsIdx");
 
                 if (!reader.isLastRead())
                     return false;
