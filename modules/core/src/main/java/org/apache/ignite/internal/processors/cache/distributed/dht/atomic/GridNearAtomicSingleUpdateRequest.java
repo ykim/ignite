@@ -104,6 +104,7 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     private CacheObject val;
 
     /** Entry processor. */
+    @GridDirectTransient
     private EntryProcessor<Object, Object, Object> entryProcessor;
 
     /** Entry processor bytes. */
