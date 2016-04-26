@@ -154,6 +154,10 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     @GridDirectTransient
     private GridNearAtomicUpdateResponse res;
 
+    /** Target node ID. */
+    @GridDirectTransient
+    private UUID nodeId;
+
     /**
      * Empty constructor required by {@link Externalizable}.
      */
@@ -211,11 +215,10 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         KeyCacheObject key,
         Object val
     ) {
-        super(nodeId);
-
         assert futVer != null;
 
         this.cacheId = cacheId;
+        this.nodeId = nodeId;
         this.futVer = futVer;
         this.fastMap = fastMap;
         this.updateVer = updateVer;
@@ -256,6 +259,16 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
             this.val = (CacheObject)val;
         }
+    }
+
+    /** {@inheritDoc} */
+    public UUID nodeId() {
+        return nodeId;
+    }
+
+    /** {@inheritDoc} */
+    public void nodeId(UUID nodeId) {
+        this.nodeId = nodeId;
     }
 
     /** {@inheritDoc} */

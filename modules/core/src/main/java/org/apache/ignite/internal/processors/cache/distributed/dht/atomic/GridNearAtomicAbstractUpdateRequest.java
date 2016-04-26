@@ -18,7 +18,6 @@
 package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
-import org.apache.ignite.internal.GridDirectTransient;
 import org.apache.ignite.internal.processors.cache.CacheEntryPredicate;
 import org.apache.ignite.internal.processors.cache.CacheObject;
 import org.apache.ignite.internal.processors.cache.GridCacheDeployable;
@@ -43,26 +42,6 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
     /** Message index. */
     public static final int CACHE_MSG_IDX = nextIndexId();
 
-    /** Target node ID. */
-    @GridDirectTransient
-    private UUID nodeId;
-
-    /**
-     * Default constructor.
-     */
-    protected GridNearAtomicAbstractUpdateRequest() {
-        // No-op.
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param nodeId Node ID.
-     */
-    protected GridNearAtomicAbstractUpdateRequest(UUID nodeId) {
-        this.nodeId = nodeId;
-    }
-
     /** {@inheritDoc} */
     @Override public int lookupIndex() {
         return CACHE_MSG_IDX;
@@ -71,16 +50,12 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
     /**
      * @return Mapped node ID.
      */
-    public UUID nodeId() {
-        return nodeId;
-    }
+    public abstract UUID nodeId();
 
     /**
      * @param nodeId Node ID.
      */
-    public void nodeId(UUID nodeId) {
-        this.nodeId = nodeId;
-    }
+    public abstract void nodeId(UUID nodeId);
 
     /**
      * @return Subject ID.

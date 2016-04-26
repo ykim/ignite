@@ -151,6 +151,10 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     @GridDirectTransient
     private GridNearAtomicUpdateResponse res;
 
+    /** Target node ID. */
+    @GridDirectTransient
+    private UUID nodeId;
+
     /** Maximum possible size of inner collections. */
     @GridDirectTransient
     private int initSize;
@@ -208,11 +212,10 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
         boolean addDepInfo,
         int maxEntryCnt
     ) {
-        super(nodeId);
-
         assert futVer != null;
 
         this.cacheId = cacheId;
+        this.nodeId = nodeId;
         this.futVer = futVer;
         this.fastMap = fastMap;
         this.updateVer = updateVer;
@@ -239,6 +242,16 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
         initSize = Math.min(maxEntryCnt, 10);
 
         keys = new ArrayList<>(initSize);
+    }
+
+    /** {@inheritDoc} */
+    public UUID nodeId() {
+        return nodeId;
+    }
+
+    /** {@inheritDoc} */
+    public void nodeId(UUID nodeId) {
+        this.nodeId = nodeId;
     }
 
     /** {@inheritDoc} */
