@@ -185,7 +185,7 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
 
                 e.retryReadyFuture(cctx.shared().nextAffinityReadyFuture(req.topologyVersion()));
 
-                res.addFailedKeys(req.keys(), e);
+                res.addFailedKeys(req, e);
             }
         }
 
@@ -298,27 +298,28 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
 
             assert req != null && req.topologyVersion().equals(topVer) : req;
 
-            if (res.remapKeys() != null) {
+            if (res.remapKeysCount() > 0) {
                 assert !fastMap || cctx.kernalContext().clientNode();
 
                 if (remapKeys == null)
-                    remapKeys = U.newHashSet(res.remapKeys().size());
+                    remapKeys = U.newHashSet(res.remapKeysCount());
 
-                remapKeys.addAll(res.remapKeys());
+                for (int i = 0; i < res.remapKeysCount(); i++)
+                    remapKeys.add(res.remapKey(i));
 
                 if (mapErrTopVer == null || mapErrTopVer.compareTo(req.topologyVersion()) < 0)
                     mapErrTopVer = req.topologyVersion();
             }
             else if (res.error() != null) {
-                if (res.failedKeys() != null) {
+                if (res.failedKeysCount() > 0) {
                     if (err == null)
                         err = new CachePartialUpdateCheckedException(
                             "Failed to update keys (retry update if possible).");
 
-                    Collection<Object> keys = new ArrayList<>(res.failedKeys().size());
+                    Collection<Object> keys = new ArrayList<>(res.failedKeysCount());
 
-                    for (KeyCacheObject key : res.failedKeys())
-                        keys.add(cctx.cacheObjectContext().unwrapBinaryIfNeeded(key, keepBinary, false));
+                    for (int i = 0; i < res.failedKeysCount(); i++)
+                        keys.add(cctx.cacheObjectContext().unwrapBinaryIfNeeded(res.failedKey(i), keepBinary, false));
 
                     err.add(keys, res.error(), req.topologyVersion());
                 }
@@ -399,7 +400,7 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
             }
         }
 
-        if (res.error() != null && res.failedKeys() == null) {
+        if (res.error() != null && res.failedKeysCount() == 0) {
             onDone(res.error());
 
             return;
@@ -486,7 +487,7 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
     private void updateNear(GridNearAtomicUpdateRequest req, GridNearAtomicUpdateResponse res) {
         assert nearEnabled;
 
-        if (res.remapKeys() != null || !req.hasPrimary())
+        if (res.remapKeysCount() > 0 || !req.hasPrimary())
             return;
 
         GridNearAtomicCache near = (GridNearAtomicCache)cctx.dht().near();
@@ -634,7 +635,7 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
                 req.futureVersion(),
                 cctx.deploymentEnabled());
 
-            res.addFailedKeys(req.keys(), e);
+            res.addFailedKeys(req, e);
 
             onResult(req.nodeId(), res, true);
         }

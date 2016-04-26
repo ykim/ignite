@@ -129,18 +129,13 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
         GridNearAtomicAbstractUpdateRequest req,
         GridNearAtomicUpdateResponse res
     ) {
-        if (F.size(res.failedKeys()) == req.keysCount())
+        if (res.failedKeysCount() == req.keysCount())
             return;
 
         /*
          * Choose value to be stored in near cache: first check key is not in failed and not in skipped list,
          * then check if value was generated on primary node, if not then use value sent in request.
          */
-
-        Collection<KeyCacheObject> failed = res.failedKeys();
-        List<Integer> nearValsIdxs = res.nearValuesIndexes();
-        List<Integer> skipped = res.skippedIndexes();
-
         GridCacheVersion ver = req.updateVersion();
 
         if (ver == null)
@@ -153,12 +148,22 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
         String taskName = ctx.kernalContext().task().resolveTaskName(req.taskNameHash());
 
         for (int i = 0; i < req.keysCount(); i++) {
-            if (F.contains(skipped, i))
+            if (res.isNearSkippedIndex(i))
                 continue;
 
             KeyCacheObject key = req.key(i);
 
-            if (F.contains(failed, key))
+            boolean failed = false;
+
+            for (int j = 0; j < res.failedKeysCount(); j++) {
+                if (F.eq(res.failedKey(j), key)) {
+                    failed = true;
+
+                    break;
+                }
+            }
+
+            if (failed)
                 continue;
 
             if (ctx.affinity().belongs(ctx.localNode(), ctx.affinity().partition(key), req.topologyVersion())) { // Reader became backup.
@@ -172,7 +177,7 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
 
             CacheObject val = null;
 
-            if (F.contains(nearValsIdxs, i)) {
+            if (res.isNearValueIndex(i)) {
                 val = res.nearValue(nearValIdx);
 
                 nearValIdx++;

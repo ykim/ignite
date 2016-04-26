@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.internal.GridDirectCollection;
 import org.apache.ignite.internal.GridDirectTransient;
@@ -75,7 +74,7 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
     /** Failed keys. */
     @GridToStringInclude
     @GridDirectCollection(KeyCacheObject.class)
-    private volatile Collection<KeyCacheObject> failedKeys;
+    private volatile List<KeyCacheObject> failedKeys;
 
     /** Keys that should be remapped. */
     @GridToStringInclude
@@ -167,10 +166,18 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
     }
 
     /**
-     * @return Collection of failed keys.
+     * @return Failed keys count.
      */
-    public Collection<KeyCacheObject> failedKeys() {
-        return failedKeys;
+    public int failedKeysCount() {
+        return failedKeys == null ? 0 : failedKeys.size();
+    }
+
+    /**
+     * @param idx Index.
+     * @return Failed key.
+     */
+    public KeyCacheObject failedKey(int idx) {
+        return failedKeys.get(idx);
     }
 
     /**
@@ -189,17 +196,28 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
     }
 
     /**
-     * @param remapKeys Remap keys.
+     * @param req Request.
      */
-    public void remapKeys(List<KeyCacheObject> remapKeys) {
-        this.remapKeys = remapKeys;
+    public void remapKeys(GridNearAtomicAbstractUpdateRequest req) {
+        remapKeys = new ArrayList<>(req.keysCount());
+
+        for (int i = 0; i < req.keysCount(); i++)
+            remapKeys.add(req.key(i));
     }
 
     /**
-     * @return Remap keys.
+     * @param idx Index.
+     * @return Remap key.
      */
-    public Collection<KeyCacheObject> remapKeys() {
-        return remapKeys;
+    public KeyCacheObject remapKey(int idx) {
+        return remapKeys.get(idx);
+    }
+
+    /**
+     * @return Remap keys count.
+     */
+    public int remapKeysCount() {
+        return remapKeys == null ? 0 : remapKeys.size();
     }
 
     /**
@@ -312,18 +330,24 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
     }
 
     /**
-     * @return Indexes of keys for which update was skipped
+     * Check if update was skipped for the given index.
+     *
+     * @param idx Index.
+     * @return {@code True} if skipped.
      */
-    @Nullable public List<Integer> skippedIndexes() {
-        return nearSkipIdxs;
+    public boolean isNearSkippedIndex(int idx) {
+        return nearSkipIdxs != null && nearSkipIdxs.contains(idx);
     }
 
     /**
-     * @return Indexes of keys for which values were generated on primary node.
+     * Check if this is an index of a key for which values were generated on primary node.
+     *
+     * @param idx Index.
+     * @return {@code True} if values were generated on primary node.
      */
-   @Nullable public List<Integer> nearValuesIndexes() {
-        return nearValsIdxs;
-   }
+    public boolean isNearValueIndex(int idx) {
+        return nearValsIdxs != null && nearValsIdxs.contains(idx);
+    }
 
     /**
      * @param idx Index.
@@ -341,14 +365,11 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
      */
     public synchronized void addFailedKey(KeyCacheObject key, Throwable e) {
         if (failedKeys == null)
-            failedKeys = new ConcurrentLinkedQueue<>();
+            failedKeys = new ArrayList<>(1);
 
         failedKeys.add(key);
 
-        if (err == null)
-            err = new IgniteCheckedException("Failed to update keys on primary node.");
-
-        err.addSuppressed(e);
+        setFailedKeysError(e);
     }
 
     /**
@@ -365,25 +386,31 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
             failedKeys.addAll(keys);
         }
 
-        if (err == null)
-            err = new IgniteCheckedException("Failed to update keys on primary node.");
-
-        err.addSuppressed(e);
+        setFailedKeysError(e);
     }
 
     /**
-     * Adds keys to collection of failed keys.
+     * Add keys to collection of failed keys.
      *
-     * @param keys Key to add.
+     * @param req Request.
      * @param e Error cause.
-     * @param ctx Context.
      */
-    public synchronized void addFailedKeys(Collection<KeyCacheObject> keys, Throwable e, GridCacheContext ctx) {
+    public synchronized void addFailedKeys(GridNearAtomicAbstractUpdateRequest req, Throwable e) {
         if (failedKeys == null)
-            failedKeys = new ArrayList<>(keys.size());
+            failedKeys = new ArrayList<>(req.keysCount());
 
-        failedKeys.addAll(keys);
+        for (int i = 0; i < req.keysCount(); i++)
+            failedKeys.add(req.key(i));
 
+        setFailedKeysError(e);
+    }
+
+    /**
+     * Set failed keys error.
+     *
+     * @param e Error.
+     */
+    private void setFailedKeysError(Throwable e) {
         if (err == null)
             err = new IgniteCheckedException("Failed to update keys on primary node.");
 

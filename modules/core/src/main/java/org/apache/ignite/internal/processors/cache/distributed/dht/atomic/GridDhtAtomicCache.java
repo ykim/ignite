@@ -210,12 +210,17 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                 if (req.writeSynchronizationMode() != FULL_ASYNC)
                     sendNearUpdateReply(res.nodeId(), res);
                 else {
-                    if (!F.isEmpty(res.remapKeys()))
+                    if (res.remapKeysCount() > 0)
                         // Remap keys on primary node in FULL_ASYNC mode.
                         remapToNewPrimary(req);
                     else if (res.error() != null) {
+                        Collection<KeyCacheObject> failedKeys = new ArrayList<>(res.failedKeysCount());
+
+                        for (int i = 0; i < res.failedKeysCount(); i++)
+                            failedKeys.add(res.failedKey(i));
+
                         U.error(log, "Failed to process write update request in FULL_ASYNC mode for keys: " +
-                            res.failedKeys(), res.error());
+                            failedKeys, res.error());
                     }
                 }
             }
@@ -1526,7 +1531,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                 try {
                     if (top.stopping()) {
-                        res.addFailedKeys(req.keys(), new IgniteCheckedException("Failed to perform cache operation " +
+                        res.addFailedKeys(req, new IgniteCheckedException("Failed to perform cache operation " +
                             "(cache is stopped): " + name()));
 
                         completionCb.apply(req, res);
@@ -1669,7 +1674,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             // an attempt to use cleaned resources.
             U.error(log, "Unexpected exception during cache update", e);
 
-            res.addFailedKeys(req.keys(), e);
+            res.addFailedKeys(req, e);
 
             completionCb.apply(req, res);
 
@@ -1682,7 +1687,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         if (remap) {
             assert dhtFut == null;
 
-            res.remapKeys(req.keys());
+            res.remapKeys(req);
 
             completionCb.apply(req, res);
         }
@@ -1739,7 +1744,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                 reloadIfNeeded(locked);
             }
             catch (IgniteCheckedException e) {
-                res.addFailedKeys(req.keys(), e);
+                res.addFailedKeys(req, e);
 
                 return new UpdateBatchResult();
             }
@@ -2593,7 +2598,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             }
         }
         catch (IgniteCheckedException e) {
-            res.addFailedKeys(putMap != null ? putMap.keySet() : rmvKeys, e, ctx);
+            res.addFailedKeys(putMap != null ? putMap.keySet() : rmvKeys, e);
         }
 
         if (storeErr != null) {
@@ -2602,7 +2607,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             for (Object failedKey : storeErr.failedKeys())
                 failed.add(ctx.toCacheKeyObject(failedKey));
 
-            res.addFailedKeys(failed, storeErr.getCause(), ctx);
+            res.addFailedKeys(failed, storeErr.getCause());
         }
 
         return dhtFut;
