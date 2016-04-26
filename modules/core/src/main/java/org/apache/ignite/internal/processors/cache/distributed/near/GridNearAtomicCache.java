@@ -156,7 +156,7 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
             boolean failed = false;
 
             for (int j = 0; j < res.failedKeysCount(); j++) {
-                if (F.eq(res.failedKey(j), key)) {
+                if (F.eq(res.failedKey(req, j), key)) {
                     failed = true;
 
                     break;

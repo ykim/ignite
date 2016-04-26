@@ -77,10 +77,11 @@ public abstract class GridNearAtomicAbstractUpdateResponse extends GridCacheMess
     public abstract int failedKeysCount();
 
     /**
+     * @param req Request.
      * @param idx Index.
      * @return Failed key.
      */
-    public abstract KeyCacheObject failedKey(int idx);
+    public abstract KeyCacheObject failedKey(GridNearAtomicAbstractUpdateRequest req, int idx);
 
     /**
      * @return Return value.

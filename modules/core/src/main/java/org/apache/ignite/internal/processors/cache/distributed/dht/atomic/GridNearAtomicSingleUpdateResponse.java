@@ -64,7 +64,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
     /** Failed keys. */
     @GridToStringInclude
-    private volatile KeyCacheObject failedKey;
+    private volatile boolean failedKey;
 
     /** Keys that should be remapped. */
     @GridToStringInclude
@@ -138,14 +138,15 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
     /** {@inheritDoc} */
     @Override public int failedKeysCount() {
-        return failedKey == null ? 0 : 1;
+        return failedKey ? 1 : 0;
     }
 
     /** {@inheritDoc} */
-    @Override public KeyCacheObject failedKey(int idx) {
+    @Override public KeyCacheObject failedKey(GridNearAtomicAbstractUpdateRequest req, int idx) {
         assert idx == 0;
+        assert failedKey;
 
-        return failedKey;
+        return req.key(0);
     }
 
     /** {@inheritDoc} */
@@ -256,7 +257,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
     /** {@inheritDoc} */
     @Override public synchronized void addFailedKey(KeyCacheObject key, Throwable e) {
-        failedKey = key;
+        failedKey = true;
 
         setFailedKeysError(e);
     }
@@ -266,7 +267,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
         if (keys != null) {
             assert keys.size() == 1;
 
-            failedKey = keys.iterator().next();
+            failedKey = true;
         }
 
         setFailedKeysError(e);
@@ -276,7 +277,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
     @Override public synchronized void addFailedKeys(GridNearAtomicAbstractUpdateRequest req, Throwable e) {
         assert req instanceof GridNearAtomicSingleUpdateRequest;
 
-        failedKey = req.key(0);
+        failedKey = true;
 
         setFailedKeysError(e);
     }
@@ -308,7 +309,6 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        prepareMarshalCacheObject(failedKey, cctx);
         prepareMarshalCacheObject(remapKey, cctx);
         prepareMarshalCacheObject(nearVal, cctx);
 
@@ -325,7 +325,6 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        finishUnmarshalCacheObject(failedKey, cctx, ldr);
         finishUnmarshalCacheObject(remapKey, cctx, ldr);
         finishUnmarshalCacheObject(nearVal, cctx, ldr);
 
@@ -357,7 +356,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 writer.incrementState();
 
             case 4:
-                if (!writer.writeMessage("failedKey", failedKey))
+                if (!writer.writeBoolean("failedKey", failedKey))
                     return false;
 
                 writer.incrementState();
@@ -441,7 +440,7 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
                 reader.incrementState();
 
             case 4:
-                failedKey = reader.readMessage("failedKey");
+                failedKey = reader.readBoolean("failedKey");
 
                 if (!reader.isLastRead())
                     return false;

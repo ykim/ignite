@@ -151,7 +151,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
     }
 
     /** {@inheritDoc} */
-    @Override public KeyCacheObject failedKey(int idx) {
+    @Override public KeyCacheObject failedKey(GridNearAtomicAbstractUpdateRequest req, int idx) {
         return failedKeys.get(idx);
     }
 

@@ -218,7 +218,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                         Collection<KeyCacheObject> failedKeys = new ArrayList<>(res.failedKeysCount());
 
                         for (int i = 0; i < res.failedKeysCount(); i++)
-                            failedKeys.add(res.failedKey(i));
+                            failedKeys.add(res.failedKey(req, i));
 
                         U.error(log, "Failed to process write update request in FULL_ASYNC mode for keys: " +
                             failedKeys, res.error());

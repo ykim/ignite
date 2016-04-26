@@ -319,7 +319,8 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
                     Collection<Object> keys = new ArrayList<>(res.failedKeysCount());
 
                     for (int i = 0; i < res.failedKeysCount(); i++)
-                        keys.add(cctx.cacheObjectContext().unwrapBinaryIfNeeded(res.failedKey(i), keepBinary, false));
+                        keys.add(cctx.cacheObjectContext().unwrapBinaryIfNeeded(
+                            res.failedKey(req, i), keepBinary, false));
 
                     err.add(keys, res.error(), req.topologyVersion());
                 }
