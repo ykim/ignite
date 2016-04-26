@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Abstract near update request.
+ * Abstract near ATOMIC update request.
  */
 public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessage implements GridCacheDeployable {
     /** */
@@ -41,6 +41,11 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
 
     /** Message index. */
     public static final int CACHE_MSG_IDX = nextIndexId();
+
+    /** {@inheritDoc} */
+    @Override public boolean addDeploymentInfo() {
+        return addDepInfo;
+    }
 
     /** {@inheritDoc} */
     @Override public int lookupIndex() {

@@ -28,8 +28,6 @@ import org.apache.ignite.internal.GridDirectCollection;
 import org.apache.ignite.internal.GridDirectTransient;
 import org.apache.ignite.internal.processors.cache.CacheObject;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
-import org.apache.ignite.internal.processors.cache.GridCacheDeployable;
-import org.apache.ignite.internal.processors.cache.GridCacheMessage;
 import org.apache.ignite.internal.processors.cache.GridCacheReturn;
 import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
@@ -46,12 +44,9 @@ import org.jetbrains.annotations.Nullable;
 /**
  * DHT atomic cache near update response.
  */
-public class GridNearAtomicUpdateResponse extends GridCacheMessage implements GridCacheDeployable {
+public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateResponse {
     /** */
     private static final long serialVersionUID = 0L;
-
-    /** Cache message index. */
-    public static final int CACHE_MSG_IDX = nextIndexId();
 
     /** Node ID this reply should be sent to. */
     @GridDirectTransient
@@ -126,37 +121,22 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
     }
 
     /** {@inheritDoc} */
-    @Override public int lookupIndex() {
-        return CACHE_MSG_IDX;
-    }
-
-    /**
-     * @return Node ID this response should be sent to.
-     */
-    public UUID nodeId() {
+    @Override public UUID nodeId() {
         return nodeId;
     }
 
-    /**
-     * @param nodeId Node ID.
-     */
-    public void nodeId(UUID nodeId) {
+    /** {@inheritDoc} */
+    @Override public void nodeId(UUID nodeId) {
         this.nodeId = nodeId;
     }
 
-    /**
-     * @return Future version.
-     */
-    public GridCacheVersion futureVersion() {
+    /** {@inheritDoc} */
+    @Override public GridCacheVersion futureVersion() {
         return futVer;
     }
 
-    /**
-     * Sets update error.
-     *
-     * @param err Error.
-     */
-    public void error(IgniteCheckedException err){
+    /** {@inheritDoc} */
+    @Override public void error(IgniteCheckedException err){
         this.err = err;
     }
 
@@ -165,70 +145,50 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
         return err;
     }
 
-    /**
-     * @return Failed keys count.
-     */
-    public int failedKeysCount() {
+    /** {@inheritDoc} */
+    @Override public int failedKeysCount() {
         return failedKeys == null ? 0 : failedKeys.size();
     }
 
-    /**
-     * @param idx Index.
-     * @return Failed key.
-     */
-    public KeyCacheObject failedKey(int idx) {
+    /** {@inheritDoc} */
+    @Override public KeyCacheObject failedKey(int idx) {
         return failedKeys.get(idx);
     }
 
-    /**
-     * @return Return value.
-     */
-    public GridCacheReturn returnValue() {
+    /** {@inheritDoc} */
+    @Override public GridCacheReturn returnValue() {
         return ret;
     }
 
     /**
      * @param ret Return value.
      */
+    /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
-    public void returnValue(GridCacheReturn ret) {
+    @Override public void returnValue(GridCacheReturn ret) {
         this.ret = ret;
     }
 
-    /**
-     * @param req Request.
-     */
-    public void remapKeys(GridNearAtomicAbstractUpdateRequest req) {
+    /** {@inheritDoc} */
+    @Override public void remapKeys(GridNearAtomicAbstractUpdateRequest req) {
         remapKeys = new ArrayList<>(req.keysCount());
 
         for (int i = 0; i < req.keysCount(); i++)
             remapKeys.add(req.key(i));
     }
 
-    /**
-     * @param idx Index.
-     * @return Remap key.
-     */
-    public KeyCacheObject remapKey(int idx) {
+    /** {@inheritDoc} */
+    @Override public KeyCacheObject remapKey(int idx) {
         return remapKeys.get(idx);
     }
 
-    /**
-     * @return Remap keys count.
-     */
-    public int remapKeysCount() {
+    /** {@inheritDoc} */
+    @Override public int remapKeysCount() {
         return remapKeys == null ? 0 : remapKeys.size();
     }
 
-    /**
-     * Adds value to be put in near cache on originating node.
-     *
-     * @param keyIdx Key index.
-     * @param val Value.
-     * @param ttl TTL for near cache update.
-     * @param expireTime Expire time for near cache update.
-     */
-    public void addNearValue(int keyIdx,
+    /** {@inheritDoc} */
+    @Override public void addNearValue(int keyIdx,
         @Nullable CacheObject val,
         long ttl,
         long expireTime) {
@@ -243,13 +203,9 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
         nearVals.add(val);
     }
 
-    /**
-     * @param keyIdx Key index.
-     * @param ttl TTL for near cache update.
-     * @param expireTime Expire time for near cache update.
-     */
+    /** {@inheritDoc} */
     @SuppressWarnings("ForLoopReplaceableByForEach")
-    public void addNearTtl(int keyIdx, long ttl, long expireTime) {
+    @Override public void addNearTtl(int keyIdx, long ttl, long expireTime) {
         if (ttl >= 0) {
             if (nearTtls == null) {
                 nearTtls = new GridLongList(16);
@@ -275,11 +231,8 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
             nearExpireTimes.add(expireTime);
     }
 
-    /**
-     * @param idx Index.
-     * @return Expire time for near cache update.
-     */
-    public long nearExpireTime(int idx) {
+    /** {@inheritDoc} */
+    @Override public long nearExpireTime(int idx) {
         if (nearExpireTimes != null) {
             assert idx >= 0 && idx < nearExpireTimes.size();
 
@@ -289,11 +242,8 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
         return -1L;
     }
 
-    /**
-     * @param idx Index.
-     * @return TTL for near cache update.
-     */
-    public long nearTtl(int idx) {
+    /** {@inheritDoc} */
+    @Override public long nearTtl(int idx) {
         if (nearTtls != null) {
             assert idx >= 0 && idx < nearTtls.size();
 
@@ -303,24 +253,18 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
         return -1L;
     }
 
-    /**
-     * @param nearVer Version generated on primary node to be used for originating node's near cache update.
-     */
-    public void nearVersion(GridCacheVersion nearVer) {
+    /** {@inheritDoc} */
+    @Override public void nearVersion(GridCacheVersion nearVer) {
         this.nearVer = nearVer;
     }
 
-    /**
-     * @return Version generated on primary node to be used for originating node's near cache update.
-     */
-    public GridCacheVersion nearVersion() {
+    /** {@inheritDoc} */
+    @Override public GridCacheVersion nearVersion() {
         return nearVer;
     }
 
-    /**
-     * @param keyIdx Index of key for which update was skipped
-     */
-    public void addSkippedIndex(int keyIdx) {
+    /** {@inheritDoc} */
+    @Override public void addSkippedIndex(int keyIdx) {
         if (nearSkipIdxs == null)
             nearSkipIdxs = new ArrayList<>();
 
@@ -329,41 +273,23 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
         addNearTtl(keyIdx, -1L, -1L);
     }
 
-    /**
-     * Check if update was skipped for the given index.
-     *
-     * @param idx Index.
-     * @return {@code True} if skipped.
-     */
-    public boolean isNearSkippedIndex(int idx) {
+    /** {@inheritDoc} */
+    @Override public boolean isNearSkippedIndex(int idx) {
         return nearSkipIdxs != null && nearSkipIdxs.contains(idx);
     }
 
-    /**
-     * Check if this is an index of a key for which values were generated on primary node.
-     *
-     * @param idx Index.
-     * @return {@code True} if values were generated on primary node.
-     */
-    public boolean isNearValueIndex(int idx) {
+    /** {@inheritDoc} */
+    @Override public boolean isNearValueIndex(int idx) {
         return nearValsIdxs != null && nearValsIdxs.contains(idx);
     }
 
-    /**
-     * @param idx Index.
-     * @return Value generated on primary node which should be put to originating node's near cache.
-     */
-    @Nullable public CacheObject nearValue(int idx) {
+    /** {@inheritDoc} */
+    @Override @Nullable public CacheObject nearValue(int idx) {
         return nearVals.get(idx);
     }
 
-    /**
-     * Adds key to collection of failed keys.
-     *
-     * @param key Key to add.
-     * @param e Error cause.
-     */
-    public synchronized void addFailedKey(KeyCacheObject key, Throwable e) {
+    /** {@inheritDoc} */
+    @Override public synchronized void addFailedKey(KeyCacheObject key, Throwable e) {
         if (failedKeys == null)
             failedKeys = new ArrayList<>(1);
 
@@ -372,13 +298,8 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
         setFailedKeysError(e);
     }
 
-    /**
-     * Adds keys to collection of failed keys.
-     *
-     * @param keys Key to add.
-     * @param e Error cause.
-     */
-    public synchronized void addFailedKeys(Collection<KeyCacheObject> keys, Throwable e) {
+    /** {@inheritDoc} */
+    @Override public synchronized void addFailedKeys(Collection<KeyCacheObject> keys, Throwable e) {
         if (keys != null) {
             if (failedKeys == null)
                 failedKeys = new ArrayList<>(keys.size());
@@ -389,13 +310,8 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
         setFailedKeysError(e);
     }
 
-    /**
-     * Add keys to collection of failed keys.
-     *
-     * @param req Request.
-     * @param e Error cause.
-     */
-    public synchronized void addFailedKeys(GridNearAtomicAbstractUpdateRequest req, Throwable e) {
+    /** {@inheritDoc} */
+    @Override public synchronized void addFailedKeys(GridNearAtomicAbstractUpdateRequest req, Throwable e) {
         if (failedKeys == null)
             failedKeys = new ArrayList<>(req.keysCount());
 
@@ -456,10 +372,7 @@ public class GridNearAtomicUpdateResponse extends GridCacheMessage implements Gr
             ret.finishUnmarshal(cctx, ldr);
     }
 
-    /** {@inheritDoc} */
-    @Override public boolean addDeploymentInfo() {
-        return addDepInfo;
-    }
+
 
     /** {@inheritDoc} */
     @Override public boolean writeTo(ByteBuffer buf, MessageWriter writer) {

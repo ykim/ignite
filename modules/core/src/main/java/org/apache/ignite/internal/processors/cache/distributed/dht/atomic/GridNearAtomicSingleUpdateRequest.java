@@ -496,11 +496,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     }
 
     /** {@inheritDoc} */
-    @Override public boolean addDeploymentInfo() {
-        return addDepInfo;
-    }
-
-    /** {@inheritDoc} */
     @Override public boolean isSingle() {
         return true;
     }
