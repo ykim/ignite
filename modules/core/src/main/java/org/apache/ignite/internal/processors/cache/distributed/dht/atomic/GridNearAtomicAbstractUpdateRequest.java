@@ -215,12 +215,12 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
      * @param res Response.
      * @return {@code True} if current response was {@code null}.
      */
-    public abstract boolean onResponse(GridNearAtomicUpdateResponse res);
+    public abstract boolean onResponse(GridNearAtomicAbstractUpdateResponse res);
 
     /**
      * @return Response.
      */
-    @Nullable public abstract GridNearAtomicUpdateResponse response();
+    @Nullable public abstract GridNearAtomicAbstractUpdateResponse response();
 
     /**
      * Cleanup values.

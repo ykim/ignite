@@ -19,6 +19,8 @@ package org.apache.ignite.internal;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -805,14 +807,20 @@ public class IgniteClientReconnectCacheTest extends IgniteClientReconnectAbstrac
                     ccfg.setWriteSynchronizationMode(syncMode);
 
                     if (syncMode != FULL_ASYNC) {
-                        Class<?> cls = (ccfg.getAtomicityMode() == ATOMIC) ?
-                            GridNearAtomicUpdateResponse.class : GridNearTxPrepareResponse.class;
-
                         log.info("Test cache put [atomicity=" + atomicityMode +
                             ", writeOrder=" + writeOrder +
                             ", syncMode=" + syncMode + ']');
 
-                        checkOperationInProgressFails(client, ccfg, cls, putOp);
+                        if (ccfg.getAtomicityMode() == ATOMIC) {
+                            Collection<Class> clss = new HashSet<>();
+
+                            clss.add(GridNearAtomicUpdateResponse.class);
+                            // TODO: Add single.
+
+                            checkOperationInProgressFails(client, ccfg, clss, putOp);
+                        }
+                        else
+                            checkOperationInProgressFails(client, ccfg, GridNearTxPrepareResponse.class, putOp);
 
                         client.destroyCache(ccfg.getName());
                     }
@@ -1250,16 +1258,24 @@ public class IgniteClientReconnectCacheTest extends IgniteClientReconnectAbstrac
      */
     static class TestClass5 implements Serializable {}
 
+    private void checkOperationInProgressFails(IgniteEx client,
+        final CacheConfiguration<Object, Object> ccfg,
+        Class msgToBlock,
+        final IgniteInClosure<IgniteCache<Object, Object>> c)
+        throws Exception {
+        checkOperationInProgressFails(client, ccfg, Collections.singleton(msgToBlock), c);
+    }
+
     /**
      * @param client Client.
      * @param ccfg Cache configuration.
-     * @param msgToBlock Message to block.
+     * @param msgsToBlock Message to block.
      * @param c Cache operation closure.
      * @throws Exception If failed.
      */
     private void checkOperationInProgressFails(IgniteEx client,
         final CacheConfiguration<Object, Object> ccfg,
-        Class<?> msgToBlock,
+        Collection<Class> msgsToBlock,
         final IgniteInClosure<IgniteCache<Object, Object>> c)
         throws Exception
     {
@@ -1272,7 +1288,8 @@ public class IgniteClientReconnectCacheTest extends IgniteClientReconnectAbstrac
         for (int i = 0; i < SRV_CNT; i++) {
             TestCommunicationSpi srvCommSpi = (TestCommunicationSpi)grid(i).configuration().getCommunicationSpi();
 
-            srvCommSpi.blockMessages(msgToBlock, client.localNode().id());
+            for (Class msgToBlock : msgsToBlock)
+                srvCommSpi.blockMessages(msgToBlock, client.localNode().id());
         }
 
         IgniteInternalFuture<?> fut = GridTestUtils.runAsync(new Callable<Object>() {

@@ -419,6 +419,7 @@ public abstract class IgniteClientReconnectAbstractTest extends GridCommonAbstra
         private IgniteLogger log;
 
         /** {@inheritDoc} */
+        @SuppressWarnings("unchecked")
         @Override public void sendMessage(ClusterNode node, Message msg, IgniteInClosure<IgniteException> ackC)
             throws IgniteSpiException {
             Class msgCls0 = msgCls;
@@ -427,7 +428,7 @@ public abstract class IgniteClientReconnectAbstractTest extends GridCommonAbstra
                 classes.put(((GridIoMessage)msg).message().getClass().getName(), node);
 
             if (msgCls0 != null && msg instanceof GridIoMessage
-                && ((GridIoMessage)msg).message().getClass().equals(msgCls)) {
+                && msgCls0.isAssignableFrom(((GridIoMessage)msg).message().getClass())) {
                 log.info("Block message: " + msg);
 
                 return;

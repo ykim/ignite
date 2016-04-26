@@ -149,7 +149,7 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
 
     /** */
     @GridDirectTransient
-    private GridNearAtomicUpdateResponse res;
+    private GridNearAtomicAbstractUpdateResponse res;
 
     /** Target node ID. */
     @GridDirectTransient
@@ -506,7 +506,7 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     }
 
     /** {@inheritDoc} */
-    @Override public boolean onResponse(GridNearAtomicUpdateResponse res) {
+    @Override public boolean onResponse(GridNearAtomicAbstractUpdateResponse res) {
         if (this.res == null) {
             this.res = res;
 
@@ -517,7 +517,7 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     }
 
     /** {@inheritDoc} */
-    @Override @Nullable public GridNearAtomicUpdateResponse response() {
+    @Override @Nullable public GridNearAtomicAbstractUpdateResponse response() {
         return res;
     }
 
