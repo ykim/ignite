@@ -248,4 +248,11 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheMessa
      * @param clearKeys If {@code true} clears keys.
      */
     public abstract void cleanup(boolean clearKeys);
+
+    /**
+     * Whether this is single=key request.
+     *
+     * @return {@code True} if this is a single-key request.
+     */
+    public abstract boolean isSingle();
 }

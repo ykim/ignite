@@ -488,6 +488,11 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     }
 
     /** {@inheritDoc} */
+    @Override public boolean isSingle() {
+        return true;
+    }
+
+    /** {@inheritDoc} */
     @Override public boolean writeTo(ByteBuffer buf, MessageWriter writer) {
         writer.setBuffer(buf);
 
