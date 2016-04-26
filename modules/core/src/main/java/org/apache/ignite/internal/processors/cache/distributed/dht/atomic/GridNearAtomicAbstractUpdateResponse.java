@@ -198,4 +198,9 @@ public abstract class GridNearAtomicAbstractUpdateResponse extends GridCacheMess
      * @param e Error cause.
      */
     public abstract void addFailedKeys(GridNearAtomicAbstractUpdateRequest req, Throwable e);
+
+    /**
+     * @return {@code True} is this is a response for a single key-value pair update.
+     */
+    public abstract boolean isSingle();
 }

@@ -293,6 +293,11 @@ public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUp
         err.addSuppressed(e);
     }
 
+    /** {@inheritDoc} */
+    @Override public boolean isSingle() {
+        return true;
+    }
+
     /** {@inheritDoc}
      * @param ctx*/
     @Override public void prepareMarshal(GridCacheSharedContext ctx) throws IgniteCheckedException {

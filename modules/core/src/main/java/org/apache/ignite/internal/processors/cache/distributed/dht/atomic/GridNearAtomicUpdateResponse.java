@@ -330,8 +330,12 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
         err.addSuppressed(e);
     }
 
-    /** {@inheritDoc}
-     * @param ctx*/
+    /** {@inheritDoc} */
+    @Override public boolean isSingle() {
+        return false;
+    }
+
+    /** {@inheritDoc} */
     @Override public void prepareMarshal(GridCacheSharedContext ctx) throws IgniteCheckedException {
         super.prepareMarshal(ctx);
 
