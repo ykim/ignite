@@ -17,12 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
-import java.io.Externalizable;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.internal.GridDirectCollection;
 import org.apache.ignite.internal.GridDirectTransient;
@@ -41,10 +35,17 @@ import org.apache.ignite.plugin.extensions.communication.MessageReader;
 import org.apache.ignite.plugin.extensions.communication.MessageWriter;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.Externalizable;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+
 /**
  * DHT atomic cache near update response.
  */
-public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateResponse {
+public class GridNearAtomicSingleUpdateResponse extends GridNearAtomicAbstractUpdateResponse {
     /** */
     private static final long serialVersionUID = 0L;
 
@@ -68,13 +69,11 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
     /** Failed keys. */
     @GridToStringInclude
-    @GridDirectCollection(KeyCacheObject.class)
-    private volatile List<KeyCacheObject> failedKeys;
+    private volatile KeyCacheObject failedKey;
 
     /** Keys that should be remapped. */
     @GridToStringInclude
-    @GridDirectCollection(KeyCacheObject.class)
-    private List<KeyCacheObject> remapKeys;
+    private KeyCacheObject remapKey;
 
     /** Indexes of keys for which values were generated on primary node (used if originating node has near cache). */
     @GridDirectCollection(int.class)
@@ -101,7 +100,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
     /**
      * Empty constructor required by {@link Externalizable}.
      */
-    public GridNearAtomicUpdateResponse() {
+    public GridNearAtomicSingleUpdateResponse() {
         // No-op.
     }
 
@@ -111,7 +110,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
      * @param futVer Future version.
      * @param addDepInfo Deployment info flag.
      */
-    public GridNearAtomicUpdateResponse(int cacheId, UUID nodeId, GridCacheVersion futVer, boolean addDepInfo) {
+    public GridNearAtomicSingleUpdateResponse(int cacheId, UUID nodeId, GridCacheVersion futVer, boolean addDepInfo) {
         assert futVer != null;
 
         this.cacheId = cacheId;
@@ -147,12 +146,14 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
     /** {@inheritDoc} */
     @Override public int failedKeysCount() {
-        return failedKeys == null ? 0 : failedKeys.size();
+        return failedKey == null ? 0 : 1;
     }
 
     /** {@inheritDoc} */
     @Override public KeyCacheObject failedKey(int idx) {
-        return failedKeys.get(idx);
+        assert idx == 0;
+
+        return failedKey;
     }
 
     /** {@inheritDoc} */
@@ -171,20 +172,21 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
     /** {@inheritDoc} */
     @Override public void remapKeys(GridNearAtomicAbstractUpdateRequest req) {
-        remapKeys = new ArrayList<>(req.keysCount());
+        assert req instanceof GridNearAtomicSingleUpdateRequest;
 
-        for (int i = 0; i < req.keysCount(); i++)
-            remapKeys.add(req.key(i));
+        remapKey = req.key(0);
     }
 
     /** {@inheritDoc} */
     @Override public KeyCacheObject remapKey(int idx) {
-        return remapKeys.get(idx);
+        assert idx == 0;
+
+        return remapKey;
     }
 
     /** {@inheritDoc} */
     @Override public int remapKeysCount() {
-        return remapKeys == null ? 0 : remapKeys.size();
+        return remapKey == null ? 0 : 1;
     }
 
     /** {@inheritDoc} */
@@ -287,10 +289,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
     /** {@inheritDoc} */
     @Override public synchronized void addFailedKey(KeyCacheObject key, Throwable e) {
-        if (failedKeys == null)
-            failedKeys = new ArrayList<>(1);
-
-        failedKeys.add(key);
+        failedKey = key;
 
         setFailedKeysError(e);
     }
@@ -298,10 +297,9 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
     /** {@inheritDoc} */
     @Override public synchronized void addFailedKeys(Collection<KeyCacheObject> keys, Throwable e) {
         if (keys != null) {
-            if (failedKeys == null)
-                failedKeys = new ArrayList<>(keys.size());
+            assert keys.size() == 1;
 
-            failedKeys.addAll(keys);
+            failedKey = keys.iterator().next();
         }
 
         setFailedKeysError(e);
@@ -309,11 +307,9 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
     /** {@inheritDoc} */
     @Override public synchronized void addFailedKeys(GridNearAtomicAbstractUpdateRequest req, Throwable e) {
-        if (failedKeys == null)
-            failedKeys = new ArrayList<>(req.keysCount());
+        assert req instanceof GridNearAtomicSingleUpdateRequest;
 
-        for (int i = 0; i < req.keysCount(); i++)
-            failedKeys.add(req.key(i));
+        failedKey = req.key(0);
 
         setFailedKeysError(e);
     }
@@ -340,9 +336,8 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        prepareMarshalCacheObjects(failedKeys, cctx);
-
-        prepareMarshalCacheObjects(remapKeys, cctx);
+        prepareMarshalCacheObject(failedKey, cctx);
+        prepareMarshalCacheObject(remapKey, cctx);
 
         prepareMarshalCacheObjects(nearVals, cctx);
 
@@ -359,9 +354,8 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        finishUnmarshalCacheObjects(failedKeys, cctx, ldr);
-
-        finishUnmarshalCacheObjects(remapKeys, cctx, ldr);
+        finishUnmarshalCacheObject(failedKey, cctx, ldr);
+        finishUnmarshalCacheObject(remapKey, cctx, ldr);
 
         finishUnmarshalCacheObjects(nearVals, cctx, ldr);
 
@@ -393,7 +387,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
                 writer.incrementState();
 
             case 4:
-                if (!writer.writeCollection("failedKeys", failedKeys, MessageCollectionItemType.MSG))
+                if (!writer.writeMessage("failedKey", failedKey))
                     return false;
 
                 writer.incrementState();
@@ -441,7 +435,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
                 writer.incrementState();
 
             case 12:
-                if (!writer.writeCollection("remapKeys", remapKeys, MessageCollectionItemType.MSG))
+                if (!writer.writeMessage("remapKey", remapKey))
                     return false;
 
                 writer.incrementState();
@@ -477,7 +471,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
                 reader.incrementState();
 
             case 4:
-                failedKeys = reader.readCollection("failedKeys", MessageCollectionItemType.MSG);
+                failedKey = reader.readMessage("failedKey");
 
                 if (!reader.isLastRead())
                     return false;
@@ -541,7 +535,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
                 reader.incrementState();
 
             case 12:
-                remapKeys = reader.readCollection("remapKeys", MessageCollectionItemType.MSG);
+                remapKey = reader.readMessage("remapKey");
 
                 if (!reader.isLastRead())
                     return false;
@@ -558,7 +552,7 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
         }
 
-        return reader.afterMessageRead(GridNearAtomicUpdateResponse.class);
+        return reader.afterMessageRead(GridNearAtomicSingleUpdateResponse.class);
     }
 
     /** {@inheritDoc} */
@@ -573,6 +567,6 @@ public class GridNearAtomicUpdateResponse extends GridNearAtomicAbstractUpdateRe
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridNearAtomicUpdateResponse.class, this, "parent");
+        return S.toString(GridNearAtomicSingleUpdateResponse.class, this, "parent");
     }
 }
