@@ -77,10 +77,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
     /** Flag: keep binary. */
     private static final byte FLAG_KEEP_BINARY = 0x20;
 
-    /** Target node ID. */
-    @GridDirectTransient
-    private UUID nodeId;
-
     /** Future version. */
     private GridCacheVersion futVer;
 
@@ -215,10 +211,11 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
         KeyCacheObject key,
         Object val
     ) {
+        super(nodeId);
+
         assert futVer != null;
 
         this.cacheId = cacheId;
-        this.nodeId = nodeId;
         this.futVer = futVer;
         this.fastMap = fastMap;
         this.updateVer = updateVer;
@@ -259,16 +256,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractUpd
 
             this.val = (CacheObject)val;
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override public UUID nodeId() {
-        return nodeId;
-    }
-
-    /** {@inheritDoc} */
-    @Override public void nodeId(UUID nodeId) {
-        this.nodeId = nodeId;
     }
 
     /** {@inheritDoc} */

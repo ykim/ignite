@@ -61,10 +61,6 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     /** */
     private static final long serialVersionUID = 0L;
 
-    /** Target node ID. */
-    @GridDirectTransient
-    private UUID nodeId;
-
     /** Future version. */
     private GridCacheVersion futVer;
 
@@ -212,10 +208,11 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
         boolean addDepInfo,
         int maxEntryCnt
     ) {
+        super(nodeId);
+
         assert futVer != null;
 
         this.cacheId = cacheId;
-        this.nodeId = nodeId;
         this.futVer = futVer;
         this.fastMap = fastMap;
         this.updateVer = updateVer;
@@ -242,16 +239,6 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
         initSize = Math.min(maxEntryCnt, 10);
 
         keys = new ArrayList<>(initSize);
-    }
-
-    /** {@inheritDoc} */
-    @Override public UUID nodeId() {
-        return nodeId;
-    }
-
-    /** {@inheritDoc} */
-    @Override public void nodeId(UUID nodeId) {
-        this.nodeId = nodeId;
     }
 
     /** {@inheritDoc} */
