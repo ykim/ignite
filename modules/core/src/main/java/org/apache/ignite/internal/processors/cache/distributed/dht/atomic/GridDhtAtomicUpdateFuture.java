@@ -21,15 +21,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheEntry;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
-import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.CI2;
 import org.apache.ignite.internal.util.typedef.internal.S;
-import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -38,10 +35,6 @@ import org.jetbrains.annotations.Nullable;
 public class GridDhtAtomicUpdateFuture extends GridDhtAtomicAbstractUpdateFuture {
     /** */
     private static final long serialVersionUID = 0L;
-
-    /** Mappings. */
-    @GridToStringInclude
-    private final Map<UUID, GridDhtAtomicUpdateRequest> mappings;
 
     /** Entries with readers. */
     private Map<KeyCacheObject, GridDhtCacheEntry> nearReadersEntries;
@@ -66,7 +59,6 @@ public class GridDhtAtomicUpdateFuture extends GridDhtAtomicAbstractUpdateFuture
         super(cctx, updateReq, updateRes, completionCb, writeVer);
 
         keys = new ArrayList<>(updateReq.keysCount());
-        mappings = U.newHashMap(updateReq.keysCount());
     }
 
     /**
@@ -82,27 +74,6 @@ public class GridDhtAtomicUpdateFuture extends GridDhtAtomicAbstractUpdateFuture
     @Override protected void markAllKeysFailed(@Nullable Throwable err) {
         for (KeyCacheObject key : keys)
             updateRes.addFailedKey(key, err);
-    }
-
-    /** {@inheritDoc} */
-    @Override protected void map0() {
-        for (GridDhtAtomicUpdateRequest req : mappings.values())
-            sendRequest(req);
-    }
-
-    /** {@inheritDoc} */
-    @Override protected void mapping(UUID nodeId, GridDhtAtomicUpdateRequest req) {
-        mappings.put(nodeId, req);
-    }
-
-    /** {@inheritDoc} */
-    @Override @Nullable protected GridDhtAtomicUpdateRequest mapping(UUID nodeId) {
-        return mappings.get(nodeId);
-    }
-
-    /** {@inheritDoc} */
-    @Override protected int mappingsCount() {
-        return mappings != null ? mappings.size() : 0;
     }
 
     /** {@inheritDoc} */

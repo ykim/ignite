@@ -32,6 +32,7 @@ import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheE
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CI2;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -42,6 +43,7 @@ import javax.cache.processor.EntryProcessor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -89,8 +91,13 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
     /** Response count. */
     protected volatile int resCnt;
 
-    /** Continuous query closures. */
     // TODO: Optimize.
+    /** Mappings. */
+    @GridToStringInclude
+    private Map<UUID, GridDhtAtomicUpdateRequest> mappings;
+
+    // TODO: Optimize.
+    /** Continuous query closures. */
     private Collection<CI1<Boolean>> cntQryClsrs;
 
     /**
@@ -120,6 +127,8 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
         this.writeVer = writeVer;
 
         waitForExchange = !(updateReq.topologyLocked() || (updateReq.fastMap() && !updateReq.clientRequest()));
+
+        mappings = U.newHashMap(updateReq.keysCount());
     }
 
     /**
@@ -333,7 +342,7 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
      */
     public void map() {
         if (mappingsCount() > 0)
-            map0();
+            mapAll();
         else
             onDone();
 
@@ -341,6 +350,14 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
         // Backups will send ACKs anyway, future will be completed after all backups have replied.
         if (updateReq.writeSynchronizationMode() != FULL_SYNC)
             completionCb.apply(updateReq, updateRes);
+    }
+
+    /**
+     * Internal mapping routine.
+     */
+    private void mapAll() {
+        for (GridDhtAtomicUpdateRequest req : mappings.values())
+            sendRequest(req);
     }
 
     /**
@@ -394,17 +411,14 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
     protected abstract void markAllKeysFailed(@Nullable Throwable err);
 
     /**
-     * Internal mapping routine.
-     */
-    protected abstract void map0();
-
-    /**
      * Add mapping.
      *
      * @param nodeId Node ID.
      * @param req Request.
      */
-    protected abstract void mapping(UUID nodeId, GridDhtAtomicUpdateRequest req);
+    private void mapping(UUID nodeId, GridDhtAtomicUpdateRequest req) {
+        mappings.put(nodeId, req);
+    }
 
     /**
      * Get mapping for the given node ID.
@@ -412,12 +426,16 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
      * @param nodeId Node ID.
      * @return Mapping (if any).
      */
-    @Nullable protected abstract GridDhtAtomicUpdateRequest mapping(UUID nodeId);
+    @Nullable protected GridDhtAtomicUpdateRequest mapping(UUID nodeId) {
+        return mappings.get(nodeId);
+    }
 
     /**
      * @return Mappings number.
      */
-    protected abstract int mappingsCount();
+    protected int mappingsCount() {
+        return mappings != null ? mappings.size() : 0;
+    }
 
     /**
      * Add near reader entry.
