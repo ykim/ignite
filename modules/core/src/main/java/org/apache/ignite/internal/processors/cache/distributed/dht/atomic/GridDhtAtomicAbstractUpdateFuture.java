@@ -133,6 +133,7 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
      * @param prevVal Previous value.
      * @param updateCntr Partition update counter.
      */
+    @SuppressWarnings("ForLoopReplaceableByForEach")
     public void addWriteEntry(GridDhtCacheEntry entry,
         @Nullable CacheObject val,
         EntryProcessor<Object, Object, Object> entryProcessor,
@@ -142,15 +143,16 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
         boolean addPrevVal,
         @Nullable CacheObject prevVal,
         long updateCntr) {
-        Collection<ClusterNode> dhtNodes = cctx.dht().topology().nodes(entry.partition(), updateReq.topologyVersion());
+        List<ClusterNode> dhtNodes = cctx.dht().topology().nodes(entry.partition(), updateReq.topologyVersion());
 
         if (log.isDebugEnabled())
             log.debug("Mapping entry to DHT nodes [nodes=" + U.nodeIds(dhtNodes) + ", entry=" + entry + ']');
 
         addKey(entry.key());
 
-        // TODO: Avoid iteration, we usually will have only one node here.
-        for (ClusterNode node : dhtNodes) {
+        for (int i = 0; i < dhtNodes.size(); i++) {
+            ClusterNode node = dhtNodes.get(i);
+
             UUID nodeId = node.id();
 
             if (!nodeId.equals(cctx.localNodeId())) {
