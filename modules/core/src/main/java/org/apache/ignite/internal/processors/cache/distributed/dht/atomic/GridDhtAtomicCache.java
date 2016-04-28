@@ -175,9 +175,8 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
     }
 
     /** {@inheritDoc} */
-    @Override protected void init() {
-        map.setEntryFactory(new GridCacheMapEntryFactory() {
-            /** {@inheritDoc} */
+    @Override protected GridCacheMapEntryFactory entryFactory() {
+        return new GridCacheMapEntryFactory() {
             @Override public GridCacheMapEntry create(
                 GridCacheContext ctx,
                 AffinityTopologyVersion topVer,
@@ -190,7 +189,12 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                 return new GridDhtAtomicCacheEntry(ctx, topVer, key, hash, val);
             }
-        });
+        };
+    }
+
+    /** {@inheritDoc} */
+    @Override protected void init() {
+        super.init();
 
         updateReplyClos = new CI2<GridNearAtomicAbstractUpdateRequest, GridNearAtomicAbstractUpdateResponse>() {
             @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
@@ -348,16 +352,24 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
         final boolean skipStore = opCtx != null && opCtx.skipStore();
 
-        return getAsync0(ctx.toCacheKeyObject(key),
-            !ctx.config().isReadFromBackup(),
-            subjId,
-            taskName,
-            deserializeBinary,
-            expiryPlc,
-            false,
-            skipStore,
-            true,
-            needVer).get();
+        try {
+            return getAsync0(ctx.toCacheKeyObject(key, true),
+                !ctx.config().isReadFromBackup(),
+                subjId,
+                taskName,
+                deserializeBinary,
+                expiryPlc,
+                false,
+                skipStore,
+                true,
+                needVer).get();
+        }
+        catch (IgniteException e) {
+            if (e.getCause(IgniteCheckedException.class) != null)
+                throw e.getCause(IgniteCheckedException.class);
+            else
+                throw e;
+        }
     }
 
     /** {@inheritDoc} */
@@ -387,7 +399,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
         return asyncOp(new CO<IgniteInternalFuture<V>>() {
             @Override public IgniteInternalFuture<V> apply() {
-                return getAsync0(ctx.toCacheKeyObject(key),
+                return getAsync0(ctx.toCacheKeyObject(key, true),
                     forcePrimary,
                     subjId0,
                     taskName,
@@ -433,7 +445,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
         return asyncOp(new CO<IgniteInternalFuture<Map<K, V>>>() {
             @Override public IgniteInternalFuture<Map<K, V>> apply() {
-                return getAllAsync0(ctx.cacheKeysView(keys),
+                return getAllAsync0(ctx.cacheKeysView(keys, true),
                     forcePrimary,
                     subjId0,
                     taskName,
@@ -826,13 +838,16 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             true,
             TRANSFORM);
 
-        return resFut.chain(new CX1<IgniteInternalFuture<Map<K, EntryProcessorResult<T>>>, Map<K, EntryProcessorResult<T>>>() {
-            @Override public Map<K, EntryProcessorResult<T>> applyx(IgniteInternalFuture<Map<K, EntryProcessorResult<T>>> fut) throws IgniteCheckedException {
-                Map<Object, EntryProcessorResult> resMap = (Map)fut.get();
+        return resFut.chain(
+            new CX1<IgniteInternalFuture<Map<K, EntryProcessorResult<T>>>, Map<K, EntryProcessorResult<T>>>() {
+                @Override public Map<K, EntryProcessorResult<T>> applyx(
+                    IgniteInternalFuture<Map<K, EntryProcessorResult<T>>> fut
+                ) throws IgniteCheckedException {
+                    Map<Object, EntryProcessorResult> resMap = (Map)fut.get();
 
-                return ctx.unwrapInvokeResult(resMap, keepBinary);
-            }
-        });
+                    return ctx.unwrapInvokeResult(resMap, keepBinary);
+                }
+            });
     }
 
     /** {@inheritDoc} */
@@ -1409,7 +1424,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                                 GridCacheVersion obsoleteVer = context().versions().next();
 
                                 if (isNew && entry.markObsoleteIfEmpty(obsoleteVer))
-                                    removeIfObsolete(key);
+                                    removeEntry(entry);
 
                                 success = false;
                             }
@@ -2005,9 +2020,15 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                             null,
                             req.keepBinary());
 
-                        Object val = ctx.config().getInterceptor().onBeforePut(new CacheLazyEntry(ctx, entry.key(),
-                            old, req.keepBinary()),
-                            updated.value(ctx.cacheObjectContext(), false));
+                        Object val = ctx.config().getInterceptor().onBeforePut(
+                            new CacheLazyEntry(
+                                ctx,
+                                entry.key(),
+                                old,
+                                req.keepBinary()),
+                            updated.value(
+                                ctx.cacheObjectContext(),
+                                false));
 
                         if (val == null)
                             continue;
@@ -3377,7 +3398,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                 respVers.add(ver);
 
-                if  (respVers.sizex() > DEFERRED_UPDATE_RESPONSE_BUFFER_SIZE && guard.compareAndSet(false, true))
+                if (respVers.sizex() > DEFERRED_UPDATE_RESPONSE_BUFFER_SIZE && guard.compareAndSet(false, true))
                     snd = true;
             }
             finally {
