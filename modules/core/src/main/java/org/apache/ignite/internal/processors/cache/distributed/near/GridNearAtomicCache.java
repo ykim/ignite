@@ -20,7 +20,6 @@ package org.apache.ignite.internal.processors.cache.distributed.near;
 import java.io.Externalizable;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -314,8 +313,6 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
 
         assert ver != null;
 
-        Collection<KeyCacheObject> backupKeys = req.keys();
-
         boolean intercept = req.forceTransformBackups() && ctx.config().getInterceptor() != null;
 
         String taskName = ctx.kernalContext().task().resolveTaskName(req.taskNameHash());
@@ -334,7 +331,7 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
                             break;
                         }
 
-                        if (F.contains(backupKeys, key)) { // Reader became backup.
+                        if (req.hasKey(key)) { // Reader became backup.
                             if (entry.markObsolete(ver))
                                 removeEntry(entry);
 

@@ -20,6 +20,7 @@ package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,7 +44,6 @@ import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CI2;
-import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteUuid;
@@ -412,24 +412,31 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
      * @param nodeId Backup node ID.
      * @param updateRes Update response.
      */
+    @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
     public void onResult(UUID nodeId, GridDhtAtomicUpdateResponse updateRes) {
         if (log.isDebugEnabled())
             log.debug("Received DHT atomic update future result [nodeId=" + nodeId + ", updateRes=" + updateRes + ']');
 
-        if (updateRes.error() != null)
-            this.updateRes.addFailedKeys(updateRes.failedKeys(), updateRes.error());
+        if (updateRes.error() != null) {
+            List<KeyCacheObject> failed = new ArrayList<>(updateRes.failedCount());
 
-        if (!F.isEmpty(updateRes.nearEvicted())) {
-            for (KeyCacheObject key : updateRes.nearEvicted()) {
-                GridDhtCacheEntry entry = nearReadersEntries.get(key);
+            for (int i = 0; i < updateRes.failedCount(); i++)
+                failed.add(updateRes.failed(i));
 
-                try {
-                    entry.removeReader(nodeId, updateRes.messageId());
-                }
-                catch (GridCacheEntryRemovedException e) {
-                    if (log.isDebugEnabled())
-                        log.debug("Entry with evicted reader was removed [entry=" + entry + ", err=" + e + ']');
-                }
+            this.updateRes.addFailedKeys(failed, updateRes.error());
+        }
+
+        for (int i = 0; i < updateRes.nearEvictedCount(); i++) {
+            KeyCacheObject key = updateRes.nearEvicted(i);
+
+            GridDhtCacheEntry entry = nearReadersEntries.get(key);
+
+            try {
+                entry.removeReader(nodeId, updateRes.messageId());
+            }
+            catch (GridCacheEntryRemovedException e) {
+                if (log.isDebugEnabled())
+                    log.debug("Entry with evicted reader was removed [entry=" + entry + ", err=" + e + ']');
             }
         }
 

@@ -20,7 +20,6 @@ package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 import java.io.Externalizable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.internal.GridDirectCollection;
@@ -113,10 +112,20 @@ public class GridDhtAtomicUpdateResponse extends GridCacheMessage implements Gri
     }
 
     /**
-     * @return Failed keys.
+     * @return Amount of failed keys.
      */
-    public Collection<KeyCacheObject> failedKeys() {
-        return failedKeys;
+    public int failedCount() {
+        return failedKeys != null ? failedKeys.size() : 0;
+    }
+
+    /**
+     * Return failed key.
+     *
+     * @param idx Index.
+     * @return Failed key.
+     */
+    public KeyCacheObject failed(int idx) {
+        return failedKeys.get(idx);
     }
 
     /**
@@ -138,10 +147,20 @@ public class GridDhtAtomicUpdateResponse extends GridCacheMessage implements Gri
     }
 
     /**
-     * @return Evicted readers.
+     * @return Amount of near evicted keys.
      */
-    public Collection<KeyCacheObject> nearEvicted() {
-        return nearEvicted;
+    public int nearEvictedCount() {
+        return nearEvicted != null ? nearEvicted.size() : 0;
+    }
+
+    /**
+     * Return near evicted key.
+     *
+     * @param idx Index.
+     * @return Near evicted key.
+     */
+    public KeyCacheObject nearEvicted(int idx) {
+        return nearEvicted.get(idx);
     }
 
     /**
