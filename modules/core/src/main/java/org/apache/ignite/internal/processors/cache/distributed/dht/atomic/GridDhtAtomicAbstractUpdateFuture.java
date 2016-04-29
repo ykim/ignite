@@ -42,6 +42,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.cache.processor.EntryProcessor;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -106,6 +107,9 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
 
     /** Continuous query closures. */
     private List<CI1<Boolean>> cntQryClos;
+
+    /** Entries with readers. */
+    private Map<KeyCacheObject, GridDhtCacheEntry> nearReadersEntries;
 
     /**
      * Constructor.
@@ -247,7 +251,10 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
                 mapping(nodeId, req);
             }
 
-            nearReaderEntry(entry.key(), entry);
+            if (nearReadersEntries == null)
+                nearReadersEntries = new HashMap<>();
+
+            nearReadersEntries.put(entry.key(), entry);
 
             req.addNearWriteValue(entry.key(),
                 val,
@@ -316,7 +323,9 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
         for (int i = 0; i < updateRes.nearEvictedCount(); i++) {
             KeyCacheObject key = updateRes.nearEvicted(i);
 
-            GridDhtCacheEntry entry = nearReaderEntry(key);
+            assert nearReadersEntries != null;
+
+            GridDhtCacheEntry entry = nearReadersEntries.get(key);
 
             try {
                 entry.removeReader(nodeId, updateRes.messageId());
@@ -477,22 +486,6 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
     protected int mappingsCount() {
         return mapSingleNode != null ? 1 : mappings != null ? mappings.size() : 0;
     }
-
-    /**
-     * Add near reader entry.
-     *
-     * @param key Key.
-     * @param entry Near reader entry.
-     */
-    protected abstract void nearReaderEntry(KeyCacheObject key, GridDhtCacheEntry entry);
-
-    /**
-     * Get near reader entry.
-     *
-     * @param key Key.
-     * @return Near reader entry.
-     */
-    protected abstract GridDhtCacheEntry nearReaderEntry(KeyCacheObject key);
 
     /**
      * Send DHT request.

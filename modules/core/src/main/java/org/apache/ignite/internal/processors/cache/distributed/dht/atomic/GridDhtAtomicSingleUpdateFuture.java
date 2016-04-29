@@ -33,9 +33,6 @@ public class GridDhtAtomicSingleUpdateFuture extends GridDhtAtomicAbstractUpdate
     /** Key. */
     private KeyCacheObject key;
 
-    /** Entry with reader. */
-    private GridDhtCacheEntry nearReaderEntry;
-
     /**
      * Constructor.
      *
@@ -66,21 +63,6 @@ public class GridDhtAtomicSingleUpdateFuture extends GridDhtAtomicAbstractUpdate
     /** {@inheritDoc} */
     @Override protected void markAllKeysFailed(@Nullable Throwable err) {
         updateRes.addFailedKey(key, err);
-    }
-
-    /** {@inheritDoc} */
-    @Override protected void nearReaderEntry(KeyCacheObject key, GridDhtCacheEntry entry) {
-        assert F.eq(this.key, key);
-        assert nearReaderEntry == null;
-
-        nearReaderEntry = entry;
-    }
-
-    /** {@inheritDoc} */
-    @Override protected GridDhtCacheEntry nearReaderEntry(KeyCacheObject key) {
-        assert F.eq(this.key, key);
-
-        return nearReaderEntry;
     }
 
     /** {@inheritDoc} */

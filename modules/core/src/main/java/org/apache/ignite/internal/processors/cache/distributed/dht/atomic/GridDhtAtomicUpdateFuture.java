@@ -18,13 +18,9 @@
 package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
-import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheEntry;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.typedef.CI2;
 import org.apache.ignite.internal.util.typedef.internal.S;
@@ -36,9 +32,6 @@ import org.jetbrains.annotations.Nullable;
 public class GridDhtAtomicUpdateFuture extends GridDhtAtomicAbstractUpdateFuture {
     /** */
     private static final long serialVersionUID = 0L;
-
-    /** Entries with readers. */
-    private Map<KeyCacheObject, GridDhtCacheEntry> nearReadersEntries;
 
     /** Future keys. */
     private final List<KeyCacheObject> keys;
@@ -76,21 +69,6 @@ public class GridDhtAtomicUpdateFuture extends GridDhtAtomicAbstractUpdateFuture
     @Override protected void markAllKeysFailed(@Nullable Throwable err) {
         for (int i = 0; i < keys.size(); i++)
             updateRes.addFailedKey(keys.get(i), err);
-    }
-
-    /** {@inheritDoc} */
-    @Override protected void nearReaderEntry(KeyCacheObject key, GridDhtCacheEntry entry) {
-        if (nearReadersEntries == null)
-            nearReadersEntries = new HashMap<>();
-
-        nearReadersEntries.put(entry.key(), entry);
-    }
-
-    /** {@inheritDoc} */
-    @Override protected GridDhtCacheEntry nearReaderEntry(KeyCacheObject key) {
-        assert nearReadersEntries != null;
-
-        return nearReadersEntries.get(key);
     }
 
     /** {@inheritDoc} */

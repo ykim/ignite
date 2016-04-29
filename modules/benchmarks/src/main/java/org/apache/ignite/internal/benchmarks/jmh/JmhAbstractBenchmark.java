@@ -72,7 +72,7 @@ public abstract class JmhAbstractBenchmark {
      * @return Value.
      */
     protected static int intProperty(String name) {
-        return intProperty(name, 0);
+        return intProperty(name, 1);
     }
 
     /**
