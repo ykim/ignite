@@ -61,6 +61,10 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     /** */
     private static final long serialVersionUID = 0L;
 
+    /** Target node ID. */
+    @GridDirectTransient
+    private UUID nodeId;
+
     /** Future version. */
     private GridCacheVersion futVer;
 
@@ -154,10 +158,6 @@ public class GridNearAtomicUpdateRequest extends GridNearAtomicAbstractUpdateReq
     /** */
     @GridDirectTransient
     private GridNearAtomicAbstractUpdateResponse res;
-
-    /** Target node ID. */
-    @GridDirectTransient
-    private UUID nodeId;
 
     /** Maximum possible size of inner collections. */
     @GridDirectTransient
