@@ -123,7 +123,7 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
         CI2<GridNearAtomicAbstractUpdateRequest, GridNearAtomicAbstractUpdateResponse> completionCb,
         GridCacheVersion writeVer) {
         if (log == null)
-            log = U.logger(cctx.kernalContext(), logRef, GridDhtAtomicUpdateFuture.class);
+            log = U.logger(cctx.kernalContext(), logRef, GridDhtAtomicAbstractUpdateFuture.class);
 
         futVer = cctx.versions().next(updateReq.topologyVersion());
 

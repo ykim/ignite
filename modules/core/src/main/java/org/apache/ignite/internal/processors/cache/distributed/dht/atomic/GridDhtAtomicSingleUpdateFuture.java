@@ -17,40 +17,35 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheEntry;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.typedef.CI2;
+import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * DHT atomic cache backup update future.
+ * DHT atomic single update future.
  */
-public class GridDhtAtomicUpdateFuture extends GridDhtAtomicAbstractUpdateFuture {
-    /** */
-    private static final long serialVersionUID = 0L;
+public class GridDhtAtomicSingleUpdateFuture extends GridDhtAtomicAbstractUpdateFuture {
+    /** Key. */
+    private KeyCacheObject key;
 
-    /** Entries with readers. */
-    private Map<KeyCacheObject, GridDhtCacheEntry> nearReadersEntries;
-
-    /** Future keys. */
-    private final List<KeyCacheObject> keys;
+    /** Entry with reader. */
+    private GridDhtCacheEntry nearReaderEntry;
 
     /**
+     * Constructor.
+     *
      * @param cctx Cache context.
-     * @param completionCb Callback to invoke when future is completed.
+     * @param completionCb Completion callback.
      * @param writeVer Write version.
      * @param updateReq Update request.
      * @param updateRes Update response.
      */
-    public GridDhtAtomicUpdateFuture(
+    public GridDhtAtomicSingleUpdateFuture(
         GridCacheContext cctx,
         CI2<GridNearAtomicAbstractUpdateRequest, GridNearAtomicAbstractUpdateResponse> completionCb,
         GridCacheVersion writeVer,
@@ -58,43 +53,38 @@ public class GridDhtAtomicUpdateFuture extends GridDhtAtomicAbstractUpdateFuture
         GridNearAtomicAbstractUpdateResponse updateRes
     ) {
         super(cctx, updateReq, updateRes, completionCb, writeVer);
-
-        keys = new ArrayList<>(updateReq.keysCount());
-    }
-
-    /**
-     * Add key.
-     *
-     * @param key Key.
-     */
-    protected void addKey(KeyCacheObject key) {
-        keys.add(key);
     }
 
     /** {@inheritDoc} */
-    @SuppressWarnings("ForLoopReplaceableByForEach")
+    @Override protected void addKey(KeyCacheObject key) {
+        // With current implementation key could be set twice in case of near readers. Though, it will be the same key.
+        assert this.key == null || F.eq(this.key, key);
+
+        this.key = key;
+    }
+
+    /** {@inheritDoc} */
     @Override protected void markAllKeysFailed(@Nullable Throwable err) {
-        for (int i = 0; i < keys.size(); i++)
-            updateRes.addFailedKey(keys.get(i), err);
+        updateRes.addFailedKey(key, err);
     }
 
     /** {@inheritDoc} */
     @Override protected void nearReaderEntry(KeyCacheObject key, GridDhtCacheEntry entry) {
-        if (nearReadersEntries == null)
-            nearReadersEntries = new HashMap<>();
+        assert F.eq(this.key, key);
+        assert nearReaderEntry == null;
 
-        nearReadersEntries.put(entry.key(), entry);
+        nearReaderEntry = entry;
     }
 
     /** {@inheritDoc} */
     @Override protected GridDhtCacheEntry nearReaderEntry(KeyCacheObject key) {
-        assert nearReadersEntries != null;
+        assert F.eq(this.key, key);
 
-        return nearReadersEntries.get(key);
+        return nearReaderEntry;
     }
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridDhtAtomicUpdateFuture.class, this);
+        return S.toString(GridDhtAtomicSingleUpdateFuture.class, this);
     }
 }
