@@ -15,36 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.cache.query;
+package org.apache.ignite.cache.query;
+
+import org.apache.ignite.internal.processors.cache.query.CacheQueryType;
 
 /**
- * Cache query type.
- * <p>
- * Used in {@link org.apache.ignite.events.CacheQueryExecutedEvent} and {@link org.apache.ignite.events.CacheQueryReadEvent}
- * to identify the type of query for which an event was fired.
- *
- * @see org.apache.ignite.events.CacheQueryExecutedEvent#queryType()
- * @see org.apache.ignite.events.CacheQueryReadEvent#queryType()
+ * Per individual query metrics.
  */
-public enum CacheQueryType {
-    /** SQL query. */
-    SQL,
+public interface QueryMetricsEx extends QueryMetrics {
+    /**
+     * @return String representation of query.
+     */
+    public String query();
 
-    /** SQL fields query. */
-    SQL_FIELDS,
-
-    /** Full text query. */
-    FULL_TEXT,
-
-    /** Scan query. */
-    SCAN,
-
-    /** Continuous query. */
-    CONTINUOUS,
-
-    /** SPI query. */
-    SPI,
-
-    /** Cache set items query. */
-    SET
+    /**
+     * @return Query type.
+     */
+    public CacheQueryType queryType();
 }

@@ -1119,9 +1119,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
                     key = (K)cctx.unwrapBinaryIfNeeded(key, keepBinary);
 
-                    if (filter != null || locNode) {
+                    if (filter != null || locNode)
                         val = (V)cctx.unwrapBinaryIfNeeded(val, keepBinary);
-                    }
 
                     if (filter != null && !filter.apply(key, val))
                         continue;
@@ -1690,6 +1689,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
         long startTime = U.currentTimeMillis();
 
+        final String namex = cctx.namex();
+
         try {
             assert qry.type() == SCAN;
 
@@ -1698,7 +1699,6 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
             final String taskName = cctx.kernalContext().task().resolveTaskName(qry.taskHash());
             final IgniteBiPredicate filter = qry.scanFilter();
-            final String namex = cctx.namex();
             final ClusterNode locNode = cctx.localNode();
             final UUID subjId = qry.subjectId();
 
@@ -1723,7 +1723,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             if (updStatisticsIfNeeded) {
                 needUpdStatistics = false;
 
-                cctx.queries().onCompleted(U.currentTimeMillis() - startTime, false);
+                cctx.queries().onCompleted(CacheQueryType.SCAN, namex, U.currentTimeMillis() - startTime, false);
             }
 
             final boolean readEvt = cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_OBJECT_READ);
@@ -1776,7 +1776,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         }
         catch (Exception e) {
             if (needUpdStatistics)
-                cctx.queries().onCompleted(U.currentTimeMillis() - startTime, true);
+                cctx.queries().onCompleted(CacheQueryType.SCAN, namex, U.currentTimeMillis() - startTime, true);
 
             throw e;
         }
@@ -2071,10 +2071,14 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     }
 
     /**
+     * @param qryType Query type.
+     * @param qry Query description.
      * @param duration Execution duration.
      * @param fail {@code true} if execution failed.
      */
-    public void onCompleted(long duration, boolean fail) {
+    public void onCompleted(CacheQueryType qryType, String qry, long duration, boolean fail) {
+        log.warning("Query type: " + qryType + ", query: " + qry);
+
         metrics.onQueryCompleted(duration, fail);
     }
 

@@ -17,6 +17,30 @@
 
 package org.apache.ignite.internal.processors.query;
 
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Field;
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import javax.cache.Cache;
+import javax.cache.CacheException;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.IgniteLogger;
@@ -67,31 +91,6 @@ import org.apache.ignite.lang.IgniteFuture;
 import org.apache.ignite.spi.indexing.IndexingQueryFilter;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
-
-import javax.cache.Cache;
-import javax.cache.CacheException;
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Field;
-import java.lang.reflect.Member;
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
 
 import static org.apache.ignite.events.EventType.EVT_CACHE_QUERY_EXECUTED;
 import static org.apache.ignite.internal.IgniteComponentType.INDEXING;
@@ -727,7 +726,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             throw new IllegalStateException("Failed to execute query (grid is stopping).");
 
         try {
-            return executeQuery(cctx, new IgniteOutClosureX<QueryCursor<List<?>>>() {
+            return executeQuery(CacheQueryType.SQL_FIELDS, qry.getSql(), cctx, new IgniteOutClosureX<QueryCursor<List<?>>>() {
                 @Override public QueryCursor<List<?>> applyx() throws IgniteCheckedException {
                     return idx.queryTwoStep(cctx, qry);
                 }
@@ -753,7 +752,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             throw new IllegalStateException("Failed to execute query (grid is stopping).");
 
         try {
-            return executeQuery(cctx, new IgniteOutClosureX<QueryCursor<Cache.Entry<K, V>>>() {
+            return executeQuery(CacheQueryType.SQL, qry.getSql(), cctx, new IgniteOutClosureX<QueryCursor<Cache.Entry<K, V>>>() {
                 @Override public QueryCursor<Cache.Entry<K, V>> applyx() throws IgniteCheckedException {
                     return idx.queryTwoStep(cctx, qry);
                 }
@@ -783,6 +782,8 @@ public class GridQueryProcessor extends GridProcessorAdapter {
 
         try {
             return executeQuery(
+                CacheQueryType.SQL,
+                qry.getSql(),
                 cctx,
                 new IgniteOutClosureX<Iterator<Cache.Entry<K, V>>>() {
                     @Override public Iterator<Cache.Entry<K, V>> applyx() throws IgniteCheckedException {
@@ -883,28 +884,29 @@ public class GridQueryProcessor extends GridProcessorAdapter {
         try {
             final boolean keepBinary = cctx.keepBinary();
 
-            return executeQuery(cctx, new IgniteOutClosureX<QueryCursor<List<?>>>() {
-                @Override public QueryCursor<List<?>> applyx() throws IgniteCheckedException {
-                    String space = cctx.name();
-                    String sql = qry.getSql();
-                    Object[] args = qry.getArgs();
+            return executeQuery(CacheQueryType.SQL_FIELDS, qry.getSql(), cctx,
+                new IgniteOutClosureX<QueryCursor<List<?>>>() {
+                    @Override public QueryCursor<List<?>> applyx() throws IgniteCheckedException {
+                        String space = cctx.name();
+                        String sql = qry.getSql();
+                        Object[] args = qry.getArgs();
 
-                    final GridQueryFieldsResult res = idx.queryLocalSqlFields(space, sql, F.asList(args),
-                        idx.backupFilter(null, null), qry.isEnforceJoinOrder());
+                        final GridQueryFieldsResult res = idx.queryLocalSqlFields(space, sql, F.asList(args),
+                            idx.backupFilter(null, null), qry.isEnforceJoinOrder());
 
-                    sendQueryExecutedEvent(sql, args);
+                        sendQueryExecutedEvent(sql, args);
 
-                    QueryCursorImpl<List<?>> cursor = new QueryCursorImpl<>(new Iterable<List<?>>() {
-                        @Override public Iterator<List<?>> iterator() {
-                            return new GridQueryCacheObjectsIterator(res.iterator(), cctx, keepBinary);
-                        }
-                    });
+                        QueryCursorImpl<List<?>> cursor = new QueryCursorImpl<>(new Iterable<List<?>>() {
+                            @Override public Iterator<List<?>> iterator() {
+                                return new GridQueryCacheObjectsIterator(res.iterator(), cctx, keepBinary);
+                            }
+                        });
 
-                    cursor.fieldsMeta(res.metaData());
+                        cursor.fieldsMeta(res.metaData());
 
-                    return cursor;
-                }
-            }, true);
+                        return cursor;
+                    }
+                }, true);
         }
         catch (IgniteCheckedException e) {
             throw new CacheException(e);
@@ -999,14 +1001,13 @@ public class GridQueryProcessor extends GridProcessorAdapter {
      * @return Type name.
      */
     public static String typeName(String clsName) {
-        int packageEnd = clsName.lastIndexOf('.');
+        int pkgEnd = clsName.lastIndexOf('.');
 
-        if (packageEnd >= 0 && packageEnd < clsName.length() - 1)
-            clsName = clsName.substring(packageEnd + 1);
+        if (pkgEnd >= 0 && pkgEnd < clsName.length() - 1)
+            clsName = clsName.substring(pkgEnd + 1);
 
-        if (clsName.endsWith("[]")) {
+        if (clsName.endsWith("[]"))
             clsName = clsName.substring(0, clsName.length() - 2) + "_array";
-        }
 
         int parentEnd = clsName.lastIndexOf('$');
 
@@ -1037,20 +1038,21 @@ public class GridQueryProcessor extends GridProcessorAdapter {
         try {
             final GridCacheContext<?, ?> cctx = ctx.cache().internalCache(space).context();
 
-            return executeQuery(cctx, new IgniteOutClosureX<GridCloseableIterator<IgniteBiTuple<K, V>>>() {
-                @Override public GridCloseableIterator<IgniteBiTuple<K, V>> applyx() throws IgniteCheckedException {
-                    TypeDescriptor type = typesByName.get(new TypeName(space, resType));
+            return executeQuery(CacheQueryType.FULL_TEXT, clause, cctx,
+                new IgniteOutClosureX<GridCloseableIterator<IgniteBiTuple<K, V>>>() {
+                    @Override public GridCloseableIterator<IgniteBiTuple<K, V>> applyx() throws IgniteCheckedException {
+                        TypeDescriptor type = typesByName.get(new TypeName(space, resType));
 
-                    if (type == null || !type.registered())
-                        throw new CacheException("Failed to find SQL table for type: " + resType);
+                        if (type == null || !type.registered())
+                            throw new CacheException("Failed to find SQL table for type: " + resType);
 
-                    return idx.queryLocalText(
-                        space,
-                        clause,
-                        type,
-                        filters);
-                }
-            }, false);
+                        return idx.queryLocalText(
+                            space,
+                            clause,
+                            type,
+                            filters);
+                    }
+                }, false);
         }
         finally {
             busyLock.leaveBusy();
@@ -1650,11 +1652,13 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     }
 
     /**
+     * @param qryType Query type.
+     * @param qry Query description.
      * @param cctx Cache context.
      * @param clo Closure.
      * @param complete Complete.
      */
-    public <R> R executeQuery(GridCacheContext<?, ?> cctx, IgniteOutClosureX<R> clo, boolean complete)
+    public <R> R executeQuery(CacheQueryType qryType, String qry, GridCacheContext<?, ?> cctx, IgniteOutClosureX<R> clo, boolean complete)
         throws IgniteCheckedException {
         final long startTime = U.currentTimeMillis();
 
@@ -1692,23 +1696,25 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             cctx.queries().onExecuted(err != null);
 
             if (complete && err == null)
-                onCompleted(cctx, res, null, startTime, U.currentTimeMillis() - startTime, log);
+                onCompleted(qryType, qry, cctx, res, null, startTime, U.currentTimeMillis() - startTime, log);
         }
     }
 
     /**
-     * @param cctx Cctx.
+     * @param qryType Query type.
+     * @param qry Query description.
+     * @param cctx Cache context.
      * @param res Result.
      * @param err Err.
      * @param startTime Start time.
      * @param duration Duration.
      * @param log Logger.
      */
-    public static void onCompleted(GridCacheContext<?, ?> cctx, Object res, Throwable err,
+    public static void onCompleted(CacheQueryType qryType, String qry, GridCacheContext<?, ?> cctx, Object res, Throwable err,
         long startTime, long duration, IgniteLogger log) {
         boolean fail = err != null;
 
-        cctx.queries().onCompleted(duration, fail);
+        cctx.queries().onCompleted(qryType, qry, duration, fail);
 
         if (log.isTraceEnabled())
             log.trace("Query execution completed [startTime=" + startTime +
@@ -2377,6 +2383,11 @@ public class GridQueryProcessor extends GridProcessorAdapter {
      * The way to index.
      */
     private enum IndexType {
-        ASC, DESC, TEXT
+        /** Ascending index. */
+        ASC,
+        /** Descending index. */
+        DESC,
+        /** Text index. */
+        TEXT
     }
 }

@@ -66,6 +66,7 @@ import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.query.CacheQuery;
 import org.apache.ignite.internal.processors.cache.query.CacheQueryFuture;
+import org.apache.ignite.internal.processors.cache.query.CacheQueryType;
 import org.apache.ignite.internal.processors.query.GridQueryProcessor;
 import org.apache.ignite.internal.util.GridCloseableIteratorAdapter;
 import org.apache.ignite.internal.util.GridEmptyIterator;
@@ -241,6 +242,7 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
         }
     }
 
+    /** {@inheritDoc} */
     @Override public CacheMetrics localMetrics() {
         GridCacheGateway<K, V> gate = this.gate;
 
@@ -268,6 +270,7 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
         }
     }
 
+    /** {@inheritDoc} */
     @Override public CacheMetricsMXBean localMxBean() {
         GridCacheGateway<K, V> gate = this.gate;
 
@@ -485,8 +488,8 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
             if (grp != null)
                 qry.projection(grp);
 
-            final GridCloseableIterator<Entry<K, V>> iter = ctx.kernalContext().query().executeQuery(ctx,
-                new IgniteOutClosureX<GridCloseableIterator<Entry<K, V>>>() {
+            final GridCloseableIterator<Entry<K, V>> iter = ctx.kernalContext().query().executeQuery(CacheQueryType.SCAN,
+                ctx.name(), ctx, new IgniteOutClosureX<GridCloseableIterator<Entry<K, V>>>() {
                     @Override public GridCloseableIterator<Entry<K, V>> applyx() throws IgniteCheckedException {
                         final GridCloseableIterator<Map.Entry> iter0 = qry.executeScanQuery();
 
@@ -521,7 +524,7 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
             if (grp != null)
                 qry.projection(grp);
 
-            fut = ctx.kernalContext().query().executeQuery(ctx,
+            fut = ctx.kernalContext().query().executeQuery(CacheQueryType.FULL_TEXT, p.getText(), ctx,
                 new IgniteOutClosureX<CacheQueryFuture<Map.Entry<K, V>>>() {
                     @Override public CacheQueryFuture<Map.Entry<K, V>> applyx() throws IgniteCheckedException {
                         return qry.execute();
@@ -534,7 +537,7 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
             if (grp != null)
                 qry.projection(grp);
 
-            fut = ctx.kernalContext().query().executeQuery(ctx,
+            fut = ctx.kernalContext().query().executeQuery(CacheQueryType.SPI, "", ctx,
                 new IgniteOutClosureX<CacheQueryFuture<Map.Entry<K, V>>>() {
                     @Override public CacheQueryFuture<Map.Entry<K, V>> applyx() throws IgniteCheckedException {
                         return qry.execute(((SpiQuery)filter).getArgs());
