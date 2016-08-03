@@ -15,21 +15,31 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.cache.query;
+package org.apache.ignite.internal.visor.cache;
 
-import org.apache.ignite.internal.processors.cache.query.CacheQueryType;
+import java.io.Serializable;
+import org.apache.ignite.cache.query.QueryMetrics;
+import org.apache.ignite.internal.LessNamingBean;
+import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
- * Per individual query metrics.
+ * Data transfer object for cache query metrics.
  */
-public interface QueryMetricsEx extends QueryMetrics {
-    /**
-     * @return String representation of query.
-     */
-    public String query();
+public class VisorCacheQueryMetricsV2 extends VisorCacheQueryMetrics {
+    /** */
+    private static final long serialVersionUID = 0L;
 
-    /**
-     * @return Query type.
-     */
-    public CacheQueryType queryType();
+    /** {@inheritDoc} */
+    @Override public VisorCacheQueryMetrics from(QueryMetrics m) {
+        VisorCacheQueryMetrics vm = super.from(m);
+
+        // TODO IGNITE-3443 implement.
+
+        return vm;
+    }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return S.toString(VisorCacheQueryMetricsV2.class, this);
+    }
 }

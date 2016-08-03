@@ -18,16 +18,24 @@
 package org.apache.ignite.internal.visor.cache;
 
 import java.io.Serializable;
+import org.apache.ignite.cache.query.QueryDetailsMetrics;
 import org.apache.ignite.cache.query.QueryMetrics;
 import org.apache.ignite.internal.LessNamingBean;
+import org.apache.ignite.internal.processors.cache.query.CacheQueryType;
 import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
  * Data transfer object for cache query metrics.
  */
-public class VisorCacheQueryMetrics implements Serializable, LessNamingBean {
+public class VisorCacheQueryDetailsMetrics implements Serializable, LessNamingBean {
     /** */
     private static final long serialVersionUID = 0L;
+
+    /** Query type. */
+    private CacheQueryType qryType;
+
+    /** Textual representation of query. */
+    private String qry;
 
     /** Minimum execution time of query. */
     private long minTime;
@@ -48,7 +56,7 @@ public class VisorCacheQueryMetrics implements Serializable, LessNamingBean {
      * @param m Cache query metrics.
      * @return Data transfer object for given cache metrics.
      */
-    public VisorCacheQueryMetrics from(QueryMetrics m) {
+    public VisorCacheQueryDetailsMetrics from(QueryDetailsMetrics m) {
         this.minTime = m.minimumTime();
         this.maxTime = m.maximumTime();
         this.avgTime = m.averageTime();
@@ -95,6 +103,6 @@ public class VisorCacheQueryMetrics implements Serializable, LessNamingBean {
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(VisorCacheQueryMetrics.class, this);
+        return S.toString(VisorCacheQueryDetailsMetrics.class, this);
     }
 }

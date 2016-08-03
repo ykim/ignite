@@ -17,15 +17,22 @@
 
 package org.apache.ignite.cache.query;
 
-import java.util.List;
-import org.apache.ignite.internal.processors.cache.query.CacheQuery;
+import org.apache.ignite.internal.processors.cache.query.CacheQueryType;
 
 /**
- * Cache query metrics used to obtain statistics on query. Metrics for particular query
- * can be get via {@link CacheQuery#metrics()} method or aggregated metrics for all queries
- * via {@link CacheQuery#metrics()}.
+ * Per individual query metrics aggregated by query type and Textual representation.
  */
-public interface QueryMetrics {
+public interface QueryDetailsMetrics {
+    /**
+     * @return Query type.
+     */
+    public CacheQueryType queryType();
+
+    /**
+     * @return Textual representation of query.
+     */
+    public String query();
+
     /**
      * Gets minimum execution time of query.
      *
@@ -60,9 +67,4 @@ public interface QueryMetrics {
      * @return Total number of times a query execution failed.
      */
     public int fails();
-
-    /**
-     * List of query metrics aggregated by query type and textual representation.
-     */
-    public List<QueryDetailsMetrics> details();
 }

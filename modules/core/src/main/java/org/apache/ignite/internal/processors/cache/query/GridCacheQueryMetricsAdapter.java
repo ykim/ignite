@@ -21,116 +21,51 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.ignite.cache.query.QueryDetailsMetrics;
 import org.apache.ignite.cache.query.QueryMetrics;
-import org.apache.ignite.internal.util.GridAtomicLong;
 import org.apache.ignite.internal.util.typedef.internal.S;
-import org.jsr166.LongAdder8;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.jsr166.ConcurrentLinkedHashMap;
 
 /**
  * Adapter for {@link QueryMetrics}.
  */
-public class GridCacheQueryMetricsAdapter implements QueryMetrics, Externalizable {
+public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapter implements QueryMetrics {
     /** */
     private static final long serialVersionUID = 0L;
 
-    /** Minimum time of execution. */
-    private final GridAtomicLong minTime = new GridAtomicLong();
-
-    /** Maximum time of execution. */
-    private final GridAtomicLong maxTime = new GridAtomicLong();
-
-    /** Sum of execution time for all completed queries. */
-    private final LongAdder8 sumTime = new LongAdder8();
-
-    /** Average time of execution.
-     * If doesn't equal zero then this metrics set is copy from remote node and doesn't actually update.
-     */
-    private double avgTime;
-
-    /** Number of executions. */
-    private final LongAdder8 execs = new LongAdder8();
-
-    /** Number of completed executions. */
-    private final LongAdder8 completed = new LongAdder8();
-
-    /** Number of fails. */
-    private final LongAdder8 fails = new LongAdder8();
+    /** TODO IGNITE-3443 */
+    private static final int MAX_CAP = 5;
 
     /** TODO IGNITE-3443 */
-    private final Map<String, String> perQryMetrics = new ConcurrentHashMap<>(100);
+    private final ConcurrentLinkedHashMap<QueryMetricsKey, GridCacheQueryDetailsMetricsAdapter> details = new ConcurrentLinkedHashMap<>(MAX_CAP, 0.75f, 64, MAX_CAP);
 
     /** {@inheritDoc} */
-    @Override public long minimumTime() {
-        return minTime.get();
-    }
-
-    /** {@inheritDoc} */
-    @Override public long maximumTime() {
-        return maxTime.get();
-    }
-
-    /** {@inheritDoc} */
-    @Override public double averageTime() {
-        if (avgTime > 0)
-            return avgTime;
-        else {
-            long val = completed.sum();
-
-            return val > 0 ? sumTime.sum() / val : 0;
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override public int executions() {
-        return execs.intValue();
-    }
-
-    /**
-     * Gets total number of completed executions of query.
-     * This value is actual only for local node.
-     *
-     * @return Number of completed executions.
-     */
-    public int completedExecutions() {
-        return completed.intValue();
-    }
-
-    /** {@inheritDoc} */
-    @Override public int fails() {
-        return fails.intValue();
-    }
-
-    /**
-     * Callback for query execution.
-     *
-     * @param fail {@code True} query executed unsuccessfully {@code false} otherwise.
-     */
-    public void onQueryExecute(boolean fail) {
-        execs.increment();
-
-        if (fail)
-            fails.increment();
+    @Override public List<QueryDetailsMetrics> details() {
+        return new ArrayList<QueryDetailsMetrics>(details.values());
     }
 
     /**
      * Callback for completion of query execution.
      *
+     * @param qryType Query type.
+     * @param qry Query description.
      * @param duration Duration of queue execution.
      * @param fail {@code True} query executed unsuccessfully {@code false} otherwise.
      */
-    public void onQueryCompleted(long duration, boolean fail) {
-        minTime.setIfLess(duration);
-        maxTime.setIfGreater(duration);
+    public void onQueryCompleted(CacheQueryType qryType, String qry, long duration, boolean fail) {
+        onQueryCompleted(duration, fail);
 
-        if (fail)
-            fails.increment();
-        else {
-            completed.increment();
+        QueryMetricsKey key = new QueryMetricsKey(qryType, qry);
 
-            sumTime.add(duration);
-        }
+        if (!details.contains(key))
+            details.putIfAbsent(key, new GridCacheQueryDetailsMetricsAdapter());
+
+        GridCacheQueryDetailsMetricsAdapter dm = details.get(key);
+
+        dm.onQueryCompleted(duration, fail);
     }
 
     /**
@@ -142,37 +77,107 @@ public class GridCacheQueryMetricsAdapter implements QueryMetrics, Externalizabl
         GridCacheQueryMetricsAdapter m = new GridCacheQueryMetricsAdapter();
 
         // Not synchronized because accuracy isn't critical.
-        m.fails.add(fails.sum());
-        m.minTime.set(minTime.get());
-        m.maxTime.set(maxTime.get());
-        m.execs.add(execs.sum());
-        m.completed.add(completed.sum());
-        m.sumTime.add(sumTime.sum());
-        m.avgTime = avgTime;
+        copy(m);
+
+        m.details.putAll(details);
 
         return m;
     }
 
     /** {@inheritDoc} */
     @Override public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeLong(minTime.get());
-        out.writeLong(maxTime.get());
-        out.writeDouble(averageTime());
-        out.writeInt(execs.intValue());
-        out.writeInt(fails.intValue());
+        super.writeExternal(out);
+
+        U.writeMap(out, details);
     }
 
     /** {@inheritDoc} */
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        minTime.set(in.readLong());
-        maxTime.set(in.readLong());
-        avgTime = in.readDouble();
-        execs.add(in.readInt());
-        fails.add(in.readInt());
+        super.readExternal(in);
+
+        details.putAll(U.<QueryMetricsKey, GridCacheQueryDetailsMetricsAdapter>readMap(in));
     }
 
     /** {@inheritDoc} */
     @Override public String toString() {
         return S.toString(GridCacheQueryMetricsAdapter.class, this);
+    }
+
+    /**
+     * Key for query metrics to store in map.
+     */
+    private static class QueryMetricsKey implements Externalizable {
+        /** Query type. */
+        private CacheQueryType qryType;
+
+        /** Query text descriptor: SQL, cache name, search text, ... */
+        private String qry;
+
+
+        /**
+         * Required by {@link Externalizable}.
+         */
+        public QueryMetricsKey() {
+            // No-op.
+        }
+
+        /**
+         * Constructor.
+         *
+         * @param qryType Query type.
+         * @param qry Query text descriptor.
+         */
+        public QueryMetricsKey(CacheQueryType qryType, String qry) {
+            this.qryType = qryType;
+            this.qry = qry;
+        }
+
+        /**
+         * @return Query type.
+         */
+        public CacheQueryType queryType() {
+            return qryType;
+        }
+
+        /**
+         * @return Query text descriptor: SQL, cache name, search text, ...
+         */
+        public String query() {
+            return qry;
+        }
+
+        /** {@inheritDoc} */
+        @Override public void writeExternal(ObjectOutput out) throws IOException {
+            U.writeEnum(out, qryType);
+            U.writeString(out, qry);
+        }
+
+        /** {@inheritDoc} */
+        @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+            qryType = CacheQueryType.fromOrdinal(in.readByte());
+            qry = U.readString(in);
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean equals(Object o) {
+            if (this == o)
+                return true;
+
+            if (o == null || getClass() != o.getClass())
+                return false;
+
+            QueryMetricsKey key = (QueryMetricsKey)o;
+
+            return qryType == key.qryType && qry.equals(key.qry);
+        }
+
+        /** {@inheritDoc} */
+        @Override public int hashCode() {
+            int res = qryType.hashCode();
+
+            res = 31 * res + qry.hashCode();
+
+            return res;
+        }
     }
 }

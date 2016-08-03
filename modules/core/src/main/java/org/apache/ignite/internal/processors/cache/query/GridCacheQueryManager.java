@@ -38,9 +38,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import javax.cache.Cache;
 import javax.cache.expiry.ExpiryPolicy;
 import org.apache.ignite.Ignite;
@@ -150,12 +148,6 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
     /** */
     private volatile GridCacheQueryMetricsAdapter metrics = new GridCacheQueryMetricsAdapter();
-
-    /** */
-    private volatile ConcurrentHashMap<String, String> latestQueryMetrics = new ConcurrentHashMap<>();
-
-    /** */
-    private volatile ConcurrentHashMap<String, AtomicInteger> aggregatedQueryMetrics = new ConcurrentHashMap<>();
 
     /** */
     private final ConcurrentMap<UUID, RequestFutureMap> qryIters =
@@ -2069,8 +2061,6 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      */
     public void resetMetrics() {
         metrics = new GridCacheQueryMetricsAdapter();
-        latestQueryMetrics = new ConcurrentHashMap<>();
-        aggregatedQueryMetrics = new ConcurrentHashMap<>();
     }
 
     /**
@@ -2087,30 +2077,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @param fail {@code true} if execution failed.
      */
     public void onCompleted(CacheQueryType qryType, String qry, long duration, boolean fail) {
-        metrics.onQueryCompleted(duration, fail);
-
-        latestQueryMetrics.put(qry, "Query [type=" + qryType + ", duration=" + duration + ", fail=" + fail + "]");
-
-        if (!aggregatedQueryMetrics.containsKey(qry))
-            aggregatedQueryMetrics.putIfAbsent(qry, new AtomicInteger());
-
-        aggregatedQueryMetrics.get(qry).incrementAndGet();
-
-        log.warning(">>> ---------------------------- <<<");
-
-        log.warning("latestQueryMetrics");
-
-        for (Map.Entry<String, String> entry : latestQueryMetrics.entrySet())
-            log.warning("  Query: " + entry.getKey() + " -> " + entry.getValue());
-
-        log.warning(">>> ============================ <<<");
-
-        log.warning("aggregatedQueryMetrics");
-
-        for (Map.Entry<String, AtomicInteger> entry : aggregatedQueryMetrics.entrySet())
-            log.warning("  Query: " + entry.getKey() + " -> " + entry.getValue());
-
-        log.warning(">>> ---------------------------- <<<");
+        metrics.onQueryCompleted(qryType, qry, duration, fail);
     }
 
     /**
