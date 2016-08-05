@@ -147,7 +147,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     private int maxIterCnt;
 
     /** */
-    private volatile GridCacheQueryMetricsAdapter metrics = new GridCacheQueryMetricsAdapter();
+    private volatile GridCacheQueryMetricsAdapter metrics = new GridCacheQueryMetricsAdapter(5); // TODO: IGNITE-3443 take from cfg.
 
     /** */
     private final ConcurrentMap<UUID, RequestFutureMap> qryIters =
@@ -2060,7 +2060,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * Resets metrics.
      */
     public void resetMetrics() {
-        metrics = new GridCacheQueryMetricsAdapter();
+        metrics = new GridCacheQueryMetricsAdapter(5); // TODO: IGNITE-3443 take from cfg.
     }
 
     /**

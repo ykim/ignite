@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ConcurrentMap;
 import org.apache.ignite.cache.query.QueryDetailsMetrics;
 import org.apache.ignite.cache.query.QueryMetrics;
 import org.apache.ignite.internal.util.typedef.internal.S;
@@ -36,15 +38,24 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
     /** */
     private static final long serialVersionUID = 0L;
 
-    /** TODO IGNITE-3443 */
-    private static final int MAX_CAP = 5;
+    /** History size. */
+    private final int detailsHistSz;
 
-    /** TODO IGNITE-3443 */
-    private final ConcurrentLinkedHashMap<QueryMetricsKey, GridCacheQueryDetailsMetricsAdapter> details = new ConcurrentLinkedHashMap<>(MAX_CAP, 0.75f, 64, MAX_CAP);
+    /** Map with metrics history for latest queries. */
+    private final ConcurrentMap<QueryMetricsKey, GridCacheQueryDetailsMetricsAdapter> details;
+
+    /**
+     * @param detailsHistSz Query metrics history size.
+     */
+    public GridCacheQueryMetricsAdapter(int detailsHistSz) {
+        this.detailsHistSz = detailsHistSz;
+
+        details = new ConcurrentLinkedHashMap<>(detailsHistSz, 0.75f, 16, detailsHistSz > 0 ? detailsHistSz : 1);
+    }
 
     /** {@inheritDoc} */
     @Override public List<QueryDetailsMetrics> details() {
-        return new ArrayList<QueryDetailsMetrics>(details.values());
+        return detailsHistSz > 0 ? new ArrayList<QueryDetailsMetrics>(details.values()) : Collections.<QueryDetailsMetrics>emptyList();
     }
 
     /**
@@ -60,12 +71,14 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
 
         QueryMetricsKey key = new QueryMetricsKey(qryType, qry);
 
-        if (!details.contains(key))
-            details.putIfAbsent(key, new GridCacheQueryDetailsMetricsAdapter());
+        if (detailsHistSz > 0) {
+            if (!details.containsKey(key))
+                details.putIfAbsent(key, new GridCacheQueryDetailsMetricsAdapter());
 
-        GridCacheQueryDetailsMetricsAdapter dm = details.get(key);
+            GridCacheQueryDetailsMetricsAdapter dm = details.get(key);
 
-        dm.onQueryCompleted(duration, fail);
+            dm.onQueryCompleted(duration, fail);
+        }
     }
 
     /**
@@ -74,12 +87,13 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
      * @return Copy.
      */
     public GridCacheQueryMetricsAdapter copy() {
-        GridCacheQueryMetricsAdapter m = new GridCacheQueryMetricsAdapter();
+        GridCacheQueryMetricsAdapter m = new GridCacheQueryMetricsAdapter(detailsHistSz);
 
         // Not synchronized because accuracy isn't critical.
         copy(m);
 
-        m.details.putAll(details);
+        if (detailsHistSz > 0)
+            m.details.putAll(details);
 
         return m;
     }

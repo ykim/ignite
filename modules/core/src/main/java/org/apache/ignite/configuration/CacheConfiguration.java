@@ -206,6 +206,9 @@ public class CacheConfiguration<K, V> extends MutableConfiguration<K, V> {
     /** Default timeout after which long query warning will be printed. */
     public static final long DFLT_LONG_QRY_WARN_TIMEOUT = 3000;
 
+    /** Default metrics history size for latest queries. */
+    public static final int DFLT_QRY_METRICS_HISTORY_SIZE = 0;
+
     /** Default size for onheap SQL row cache size. */
     public static final int DFLT_SQL_ONHEAP_ROW_CACHE_SIZE = 10 * 1024;
 
@@ -355,6 +358,9 @@ public class CacheConfiguration<K, V> extends MutableConfiguration<K, V> {
     /** */
     private long longQryWarnTimeout = DFLT_LONG_QRY_WARN_TIMEOUT;
 
+    /** */
+    private int qryMetricsHistSz = DFLT_QRY_METRICS_HISTORY_SIZE;
+
     /**
      * Flag indicating whether data can be read from backup.
      * If {@code false} always get data from primary node (never from backup).
@@ -454,6 +460,7 @@ public class CacheConfiguration<K, V> extends MutableConfiguration<K, V> {
         listenerConfigurations = cc.listenerConfigurations;
         loadPrevVal = cc.isLoadPreviousValue();
         longQryWarnTimeout = cc.getLongQueryWarningTimeout();
+        qryMetricsHistSz = cc.getQueryMetricsHistorySize();
         offHeapMaxMem = cc.getOffHeapMaxMemory();
         maxConcurrentAsyncOps = cc.getMaxConcurrentAsyncOperations();
         memMode = cc.getMemoryMode();
@@ -1788,6 +1795,29 @@ public class CacheConfiguration<K, V> extends MutableConfiguration<K, V> {
      */
     public CacheConfiguration<K, V> setLongQueryWarningTimeout(long longQryWarnTimeout) {
         this.longQryWarnTimeout = longQryWarnTimeout;
+
+        return this;
+    }
+
+    /**
+     * Gets size of queries metrics history that will be stored in memory for monitoring purposes.
+     * If {@code 0} then history will not be collected.
+     * Note, Larger number may lead to higher memory consumption.
+     *
+     * @return Maximum number of query metrics that will be stored in memory.
+     */
+    public int getQueryMetricsHistorySize() {
+        return qryMetricsHistSz;
+    }
+
+    /**
+     * Sets size of queries metrics history that will be stored in memory for monitoring purposes.
+     *
+     * @param qryMetricsHistSz Maximum number of latest queries metrics that will be stored in memory.
+     * @return {@code this} for chaining.
+     */
+    public CacheConfiguration<K, V> setQueryMetricsHistorySize(int qryMetricsHistSz) {
+        this.qryMetricsHistSz = qryMetricsHistSz;
 
         return this;
     }

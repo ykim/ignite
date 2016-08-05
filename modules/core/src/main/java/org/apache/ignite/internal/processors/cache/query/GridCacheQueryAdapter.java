@@ -156,7 +156,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
 
         log = cctx.logger(getClass());
 
-        metrics = new GridCacheQueryMetricsAdapter();
+        metrics = new GridCacheQueryMetricsAdapter(5); // TODO: IGNITE-3443 take from cfg.;
     }
 
     /**
@@ -424,7 +424,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
 
     /** {@inheritDoc} */
     @Override public void resetMetrics() {
-        metrics = new GridCacheQueryMetricsAdapter();
+        metrics = new GridCacheQueryMetricsAdapter(5); // TODO: IGNITE-3443 take from cfg.
     }
 
     /**
