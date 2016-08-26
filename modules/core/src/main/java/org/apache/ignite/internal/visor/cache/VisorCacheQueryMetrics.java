@@ -17,80 +17,44 @@
 
 package org.apache.ignite.internal.visor.cache;
 
-import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.ignite.cache.query.QueryDetailsMetrics;
 import org.apache.ignite.cache.query.QueryMetrics;
-import org.apache.ignite.internal.LessNamingBean;
 import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
  * Data transfer object for cache query metrics.
  */
-public class VisorCacheQueryMetrics implements Serializable, LessNamingBean {
+public class VisorCacheQueryMetrics extends VisorCacheQueryBaseMetrics {
     /** */
     private static final long serialVersionUID = 0L;
 
-    /** Minimum execution time of query. */
-    private long minTime;
-
-    /** Maximum execution time of query. */
-    private long maxTime;
-
-    /** Average execution time of query. */
-    private double avgTime;
-
-    /** Number of executions. */
-    private int execs;
-
-    /** Total number of times a query execution failed. */
-    private int fails;
+    /** List of query metrics aggregated by query type and textual representation. */
+    private List<VisorCacheQueryDetailsMetrics> details;
 
     /**
      * @param m Cache query metrics.
      * @return Data transfer object for given cache metrics.
      */
     public VisorCacheQueryMetrics from(QueryMetrics m) {
-        this.minTime = m.minimumTime();
-        this.maxTime = m.maximumTime();
-        this.avgTime = m.averageTime();
-        this.execs = m.executions();
-        this.fails = m.fails();
+        init(m.minimumTime(), m.maximumTime(), m.averageTime(), m.executions(), m.fails());
+
+        List<QueryDetailsMetrics> mds = m.details();
+
+        details = new ArrayList<>(mds.size());
+
+        for (QueryDetailsMetrics md : mds)
+            details.add(new VisorCacheQueryDetailsMetrics().from(md));
 
         return this;
     }
 
     /**
-     * @return Minimum execution time of query.
+     * @return List of query metrics aggregated by query type and textual representation.
      */
-    public long minimumTime() {
-        return minTime;
-    }
-
-    /**
-     * @return Maximum execution time of query.
-     */
-    public long maximumTime() {
-        return maxTime;
-    }
-
-    /**
-     * @return Average execution time of query.
-     */
-    public double averageTime() {
-        return avgTime;
-    }
-
-    /**
-     * @return Number of executions.
-     */
-    public int executions() {
-        return execs;
-    }
-
-    /**
-     * @return Total number of times a query execution failed.
-     */
-    public int fails() {
-        return fails;
+    public List<VisorCacheQueryDetailsMetrics> details() {
+        return details;
     }
 
     /** {@inheritDoc} */

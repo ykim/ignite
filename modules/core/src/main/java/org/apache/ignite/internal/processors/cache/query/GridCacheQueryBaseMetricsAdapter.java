@@ -84,7 +84,7 @@ public abstract class GridCacheQueryBaseMetricsAdapter implements Externalizable
         if (avgTime > 0)
             return avgTime;
         else {
-            long val = completed.sum();
+            double val = completed.sum();
 
             return val > 0 ? sumTime.sum() / val : 0;
         }
