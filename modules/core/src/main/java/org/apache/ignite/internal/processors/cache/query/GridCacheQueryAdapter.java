@@ -152,7 +152,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
 
         log = cctx.logger(getClass());
 
-        metrics = new GridCacheQueryMetricsAdapter();
+        metrics = new GridCacheQueryMetricsAdapter(cctx.config().getQueryMetricsHistorySize());
 
         this.incMeta = false;
         this.clsName = null;
@@ -192,9 +192,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
 
         log = cctx.logger(getClass());
 
-        int histSize = cctx.config().getQueryMetricsHistorySize();
-
-        metrics = new GridCacheQueryMetricsAdapter(histSize);
+        metrics = new GridCacheQueryMetricsAdapter(cctx.config().getQueryMetricsHistorySize());
     }
 
     /**
@@ -465,9 +463,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
 
     /** {@inheritDoc} */
     @Override public void resetMetrics() {
-        int histSize = cctx.config().getQueryMetricsHistorySize();
-
-        metrics = new GridCacheQueryMetricsAdapter(histSize);
+        metrics = new GridCacheQueryMetricsAdapter(cctx.config().getQueryMetricsHistorySize());
     }
 
     /**
