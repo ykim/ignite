@@ -20,7 +20,6 @@ package org.apache.ignite.internal.processors.cache.query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -63,18 +62,6 @@ public abstract class GridCacheQueryFutureAdapter<K, V, R> extends GridFutureAda
 
     /** */
     private static final Object NULL = new Object();
-
-    /** */
-    private static final Map<GridCacheQueryType, CacheQueryType> QRY_TYPES = new EnumMap<>(GridCacheQueryType.class);
-
-    static {
-        QRY_TYPES.put(GridCacheQueryType.SPI, CacheQueryType.SPI);
-        QRY_TYPES.put(GridCacheQueryType.SCAN, CacheQueryType.SCAN);
-        QRY_TYPES.put(GridCacheQueryType.SQL, CacheQueryType.SQL);
-        QRY_TYPES.put(GridCacheQueryType.SQL_FIELDS, CacheQueryType.SQL_FIELDS);
-        QRY_TYPES.put(GridCacheQueryType.TEXT, CacheQueryType.FULL_TEXT);
-        QRY_TYPES.put(GridCacheQueryType.SET, CacheQueryType.SET);
-    }
 
     /** Cache context. */
     protected GridCacheContext<K, V> cctx;
@@ -170,7 +157,7 @@ public abstract class GridCacheQueryFutureAdapter<K, V, R> extends GridFutureAda
 
         GridCacheQueryAdapter<?> qryAdapter = qry.query();
 
-        qry.query().onCompleted(QRY_TYPES.get(qryAdapter.type()), qryAdapter.clause(), res, err, startTime(), duration());
+        qry.query().onCompleted(qryAdapter.type(), qryAdapter.clause(), res, err, startTime(), duration());
 
         return super.onDone(res, err);
     }

@@ -33,13 +33,13 @@ public class GridCacheQueryDetailsMetricsAdapter extends GridCacheQueryBaseMetri
     private static final long serialVersionUID = 0L;
 
     /** Query type to track metrics. */
-    private CacheQueryType qryType;
+    private GridCacheQueryType qryType;
 
     /** Query text representation. */
     private String qry;
 
     /** {@inheritDoc} */
-    @Override  public CacheQueryType queryType() {
+    @Override  public GridCacheQueryType queryType() {
         return qryType;
     }
 
@@ -73,7 +73,7 @@ public class GridCacheQueryDetailsMetricsAdapter extends GridCacheQueryBaseMetri
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         super.readExternal(in);
 
-        qryType = CacheQueryType.fromOrdinal(in.readByte());
+        qryType = GridCacheQueryType.fromOrdinal(in.readByte());
         qry = U.readString(in);
     }
 

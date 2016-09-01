@@ -73,6 +73,7 @@ import org.apache.ignite.internal.processors.cache.QueryCursorImpl;
 import org.apache.ignite.internal.processors.cache.binary.CacheObjectBinaryProcessorImpl;
 import org.apache.ignite.internal.processors.cache.query.CacheQueryFuture;
 import org.apache.ignite.internal.processors.cache.query.CacheQueryType;
+import org.apache.ignite.internal.processors.cache.query.GridCacheQueryType;
 import org.apache.ignite.internal.util.GridSpinBusyLock;
 import org.apache.ignite.internal.util.future.GridCompoundFuture;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
@@ -730,7 +731,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             throw new IllegalStateException("Failed to execute query (grid is stopping).");
 
         try {
-            return executeQuery(CacheQueryType.SQL_FIELDS, qry.getSql(), cctx, new IgniteOutClosureX<QueryCursor<List<?>>>() {
+            return executeQuery(GridCacheQueryType.SQL_FIELDS, qry.getSql(), cctx, new IgniteOutClosureX<QueryCursor<List<?>>>() {
                 @Override public QueryCursor<List<?>> applyx() throws IgniteCheckedException {
                     return idx.queryTwoStep(cctx, qry);
                 }
@@ -756,7 +757,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             throw new IllegalStateException("Failed to execute query (grid is stopping).");
 
         try {
-            return executeQuery(CacheQueryType.SQL, qry.getSql(), cctx, new IgniteOutClosureX<QueryCursor<Cache.Entry<K, V>>>() {
+            return executeQuery(GridCacheQueryType.SQL, qry.getSql(), cctx, new IgniteOutClosureX<QueryCursor<Cache.Entry<K, V>>>() {
                 @Override public QueryCursor<Cache.Entry<K, V>> applyx() throws IgniteCheckedException {
                     return idx.queryTwoStep(cctx, qry);
                 }
@@ -785,10 +786,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             throw new IllegalStateException("Failed to execute query (grid is stopping).");
 
         try {
-            return executeQuery(
-                CacheQueryType.SQL,
-                qry.getSql(),
-                cctx,
+            return executeQuery(GridCacheQueryType.SQL, qry.getSql(), cctx,
                 new IgniteOutClosureX<Iterator<Cache.Entry<K, V>>>() {
                     @Override public Iterator<Cache.Entry<K, V>> applyx() throws IgniteCheckedException {
                         String space = cctx.name();
@@ -888,7 +886,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
         try {
             final boolean keepBinary = cctx.keepBinary();
 
-            return executeQuery(CacheQueryType.SQL_FIELDS, qry.getSql(), cctx,
+            return executeQuery(GridCacheQueryType.SQL_FIELDS, qry.getSql(), cctx,
                 new IgniteOutClosureX<QueryCursor<List<?>>>() {
                     @Override public QueryCursor<List<?>> applyx() throws IgniteCheckedException {
                         String space = cctx.name();
@@ -1042,7 +1040,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
         try {
             final GridCacheContext<?, ?> cctx = ctx.cache().internalCache(space).context();
 
-            return executeQuery(CacheQueryType.FULL_TEXT, clause, cctx,
+            return executeQuery(GridCacheQueryType.TEXT, clause, cctx,
                 new IgniteOutClosureX<GridCloseableIterator<IgniteBiTuple<K, V>>>() {
                     @Override public GridCloseableIterator<IgniteBiTuple<K, V>> applyx() throws IgniteCheckedException {
                         TypeDescriptor type = typesByName.get(new TypeName(space, resType));
@@ -1662,7 +1660,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
      * @param clo Closure.
      * @param complete Complete.
      */
-    public <R> R executeQuery(CacheQueryType qryType, String qry, GridCacheContext<?, ?> cctx, IgniteOutClosureX<R> clo, boolean complete)
+    public <R> R executeQuery(GridCacheQueryType qryType, String qry, GridCacheContext<?, ?> cctx, IgniteOutClosureX<R> clo, boolean complete)
         throws IgniteCheckedException {
         final long startTime = U.currentTimeMillis();
 
@@ -1714,7 +1712,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
      * @param duration Duration.
      * @param log Logger.
      */
-    public static void onCompleted(CacheQueryType qryType, String qry, GridCacheContext<?, ?> cctx, Object res, Throwable err,
+    public static void onCompleted(GridCacheQueryType qryType, String qry, GridCacheContext<?, ?> cctx, Object res, Throwable err,
         long startTime, long duration, IgniteLogger log) {
         boolean fail = err != null;
 

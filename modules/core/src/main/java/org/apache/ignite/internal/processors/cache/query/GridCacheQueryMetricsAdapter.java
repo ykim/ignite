@@ -66,7 +66,7 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
      * @param duration Duration of queue execution.
      * @param fail {@code True} query executed unsuccessfully {@code false} otherwise.
      */
-    public void onQueryCompleted(CacheQueryType qryType, String qry, long duration, boolean fail) {
+    public void onQueryCompleted(GridCacheQueryType qryType, String qry, long duration, boolean fail) {
         onQueryCompleted(duration, fail);
 
         QueryMetricsKey key = new QueryMetricsKey(qryType, qry);
@@ -122,7 +122,7 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
      */
     private static class QueryMetricsKey implements Externalizable {
         /** Query type. */
-        private CacheQueryType qryType;
+        private GridCacheQueryType qryType;
 
         /** Query text descriptor: SQL, cache name, search text, ... */
         private String qry;
@@ -141,7 +141,7 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
          * @param qryType Query type.
          * @param qry Query text descriptor.
          */
-        public QueryMetricsKey(CacheQueryType qryType, String qry) {
+        public QueryMetricsKey(GridCacheQueryType qryType, String qry) {
             this.qryType = qryType;
             this.qry = qry;
         }
@@ -149,7 +149,7 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
         /**
          * @return Query type.
          */
-        public CacheQueryType queryType() {
+        public GridCacheQueryType queryType() {
             return qryType;
         }
 
@@ -168,7 +168,7 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
 
         /** {@inheritDoc} */
         @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-            qryType = CacheQueryType.fromOrdinal(in.readByte());
+            qryType = GridCacheQueryType.fromOrdinal(in.readByte());
             qry = U.readString(in);
         }
 

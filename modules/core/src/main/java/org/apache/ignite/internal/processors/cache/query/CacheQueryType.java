@@ -17,8 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache.query;
 
-import org.jetbrains.annotations.Nullable;
-
 /**
  * Cache query type.
  * <p>
@@ -45,21 +43,5 @@ public enum CacheQueryType {
     CONTINUOUS,
 
     /** SPI query. */
-    SPI,
-
-    /** Cache set items query. */
-    SET;
-
-    /** Enumerated values. */
-    private static final CacheQueryType[] VALS = values();
-
-    /**
-     * Efficiently gets enumerated value from its ordinal.
-     *
-     * @param ord Ordinal value.
-     * @return Enumerated value.
-     */
-    @Nullable public static CacheQueryType fromOrdinal(byte ord) {
-        return ord >= 0 && ord < VALS.length ? VALS[ord] : null;
-    }
+    SPI
 }

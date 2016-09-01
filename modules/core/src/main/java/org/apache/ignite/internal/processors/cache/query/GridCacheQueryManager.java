@@ -1729,7 +1729,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             if (updStatisticsIfNeeded) {
                 needUpdStatistics = false;
 
-                cctx.queries().onCompleted(CacheQueryType.SCAN, namex, U.currentTimeMillis() - startTime, false);
+                cctx.queries().onCompleted(GridCacheQueryType.SCAN, namex, U.currentTimeMillis() - startTime, false);
             }
 
             final boolean readEvt = cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_OBJECT_READ);
@@ -1795,7 +1795,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         }
         catch (Exception e) {
             if (needUpdStatistics)
-                cctx.queries().onCompleted(CacheQueryType.SCAN, namex, U.currentTimeMillis() - startTime, true);
+                cctx.queries().onCompleted(GridCacheQueryType.SCAN, namex, U.currentTimeMillis() - startTime, true);
 
             throw e;
         }
@@ -2096,7 +2096,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @param duration Execution duration.
      * @param fail {@code true} if execution failed.
      */
-    public void onCompleted(CacheQueryType qryType, String qry, long duration, boolean fail) {
+    public void onCompleted(GridCacheQueryType qryType, String qry, long duration, boolean fail) {
         metrics.onQueryCompleted(qryType, qry, duration, fail);
     }
 

@@ -17,7 +17,7 @@
 
 package org.apache.ignite.cache.query;
 
-import org.apache.ignite.internal.processors.cache.query.CacheQueryType;
+import org.apache.ignite.internal.processors.cache.query.GridCacheQueryType;
 
 /**
  * Per individual query metrics aggregated by query type and Textual representation.
@@ -26,7 +26,7 @@ public interface QueryDetailsMetrics {
     /**
      * @return Query type.
      */
-    public CacheQueryType queryType();
+    public GridCacheQueryType queryType();
 
     /**
      * @return Textual representation of query.

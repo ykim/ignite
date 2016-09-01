@@ -442,7 +442,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
      * @param startTime Start time.
      * @param duration Duration.
      */
-    public void onCompleted(CacheQueryType qryType, String qry, Object res, Throwable err, long startTime, long duration) {
+    public void onCompleted(GridCacheQueryType qryType, String qry, Object res, Throwable err, long startTime, long duration) {
         GridQueryProcessor.onCompleted(qryType, qry, cctx, res, err, startTime, duration, log);
     }
 

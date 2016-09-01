@@ -18,7 +18,7 @@
 package org.apache.ignite.internal.visor.cache;
 
 import org.apache.ignite.cache.query.QueryDetailsMetrics;
-import org.apache.ignite.internal.processors.cache.query.CacheQueryType;
+import org.apache.ignite.internal.processors.cache.query.GridCacheQueryType;
 import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
@@ -29,7 +29,7 @@ public class VisorCacheQueryDetailsMetrics extends VisorCacheQueryBaseMetrics {
     private static final long serialVersionUID = 0L;
 
     /** Query type. */
-    private CacheQueryType qryType;
+    private GridCacheQueryType qryType;
 
     /** Textual representation of query. */
     private String qry;
@@ -50,7 +50,7 @@ public class VisorCacheQueryDetailsMetrics extends VisorCacheQueryBaseMetrics {
     /**
      * @return Query type.
      */
-    public CacheQueryType queryType() {
+    public GridCacheQueryType queryType() {
         return qryType;
     }
 
