@@ -15,19 +15,20 @@
  * limitations under the License.
  */
 
-import path from 'path';
-import fireUp from 'fire-up';
+'use strict';
 
-module.exports = fireUp.newInjector({
-    basePath: path.join(__dirname, '../'),
-    modules: [
-        './app/**/*.js',
-        './config/**/*.js',
-        './errors/**/*.js',
-        './middlewares/**/*.js',
-        './routes/**/*.js',
-        './services/**/*.js',
-        './test/fixtures/*.js'
-    ],
-    use: ['mongoose:mock']
-});
+// Fire me up!
+
+module.exports = {
+    implements: 'mongoose:mock',
+    inject: ['mongoose', 'require(mockgoose)']
+};
+
+
+module.exports.factory = (mongoose, mockgoose) => {
+    return new Promise((resolve) => {
+        mockgoose(mongoose).then(() => resolve(mongoose));
+    });
+};
+
+
