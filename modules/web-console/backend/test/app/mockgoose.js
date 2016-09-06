@@ -21,14 +21,10 @@
 
 module.exports = {
     implements: 'mongoose:mock',
-    inject: ['mongoose', 'require(mockgoose)']
+    inject: ['require(mongoose)', 'require(mockgoose)']
 };
-
 
 module.exports.factory = (mongoose, mockgoose) => {
-    return new Promise((resolve) => {
-        mockgoose(mongoose).then(() => resolve(mongoose));
-    });
+    return mockgoose(mongoose)
+            .then(() => mongoose);
 };
-
-

@@ -24,8 +24,6 @@ module.exports = {
     inject: ['require(mongoose)']
 };
 
-
 module.exports.factory = (mongoose) => {
     return mongoose;
 };
-

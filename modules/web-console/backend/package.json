@@ -66,6 +66,7 @@
     "eslint-friendly-formatter": "^2.0.5",
     "jasmine-core": "^2.4.1",
     "mocha": "~2.5.3",
-    "mocha-teamcity-reporter": "^1.0.0"
+    "mocha-teamcity-reporter": "^1.0.0",
+    "mockgoose": "^6.0.6"
   }
 }
