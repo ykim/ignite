@@ -1401,7 +1401,7 @@ $generatorJava.cacheMemory = function(cache, varName, res) {
 };
 
 // Generate cache query & indexing group.
-$generatorJava.cacheQuery = function(cache, varName, res) {
+$generatorJava.cacheQuery = function(cache, domains, varName, res) {
     if (!res)
         res = $generatorCommon.builder();
 
@@ -1411,6 +1411,21 @@ $generatorJava.cacheQuery = function(cache, varName, res) {
     $generatorJava.property(res, varName, cache, 'sqlSchema');
     $generatorJava.property(res, varName, cache, 'sqlOnheapRowCacheSize', null, null, 10240);
     $generatorJava.property(res, varName, cache, 'longQueryWarningTimeout', null, null, 3000);
+
+    const indexedTypes = _.reduce(domains, (acc, domain) => {
+        if (domain.queryMetadata === 'Annotations') {
+            acc.push(domain.keyType);
+            acc.push(domain.valueType);
+        }
+
+        return acc;
+    }, []);
+
+    if (indexedTypes.length > 0) {
+        res.softEmptyLine();
+
+        $generatorJava.multiparamProperty(res, varName, {indexedTypes}, 'indexedTypes', 'class');
+    }
 
     res.softEmptyLine();
 
@@ -1757,7 +1772,7 @@ $generatorJava.cacheConcurrency = function(cache, varName, res) {
     $generatorJava.property(res, varName, cache, 'maxConcurrentAsyncOperations', null, null, 500);
     $generatorJava.property(res, varName, cache, 'defaultLockTimeout', null, null, 0);
     $generatorJava.enumProperty(res, varName, cache, 'atomicWriteOrderMode', 'org.apache.ignite.cache.CacheAtomicWriteOrderMode');
-    $generatorJava.enumProperty(res, varName, cache, 'writeSynchronizationMode', 'org.apache.ignite.cache.CacheWriteSynchronizationMode', null, null, 'PRIMARY_SYNC');
+    $generatorJava.enumProperty(res, varName, cache, 'writeSynchronizationMode', 'org.apache.ignite.cache.CacheWriteSynchronizationMode', null, 'PRIMARY_SYNC');
 
     res.needEmptyLine = true;
 
@@ -2089,7 +2104,7 @@ $generatorJava.cache = function(cache, varName, res) {
 
     $generatorJava.cacheGeneral(cache, varName, res);
     $generatorJava.cacheMemory(cache, varName, res);
-    $generatorJava.cacheQuery(cache, varName, res);
+    $generatorJava.cacheQuery(cache, cache.domains, varName, res);
     $generatorJava.cacheStore(cache, cache.domains, varName, res);
 
     const igfs = _.get(cache, 'nodeFilter.IGFS.instance');

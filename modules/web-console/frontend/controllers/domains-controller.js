@@ -47,8 +47,13 @@ export default ['domainsController', [
             return name ? name.replace(/[^A-Za-z_0-9/.]+/g, '_') : 'org';
         };
 
-        $scope.ui.packageNameUserInput = $scope.ui.packageName =
-            _toJavaPackage($root.user.email.replace('@', '.').split('.').reverse().join('.') + '.model');
+        $root.$on('user', (event, user) => {
+            if ($scope.ui.packageName)
+                $scope.ui.packageNameUserInput = $scope.ui.packageName;
+
+            $scope.ui.packageName = _toJavaPackage(user.email.replace('@', '.').split('.').reverse().join('.') + '.model');
+        });
+
         $scope.ui.builtinKeys = true;
         $scope.ui.usePrimitives = true;
         $scope.ui.generateAliases = true;

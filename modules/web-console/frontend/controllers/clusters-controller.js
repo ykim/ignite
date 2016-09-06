@@ -28,11 +28,19 @@ export default ['clustersController', [
         const blank = {
             atomicConfiguration: {},
             binaryConfiguration: {},
+            cacheKeyConfiguration: [],
             communication: {},
             connector: {},
-            discovery: {},
+            discovery: {
+                Cloud: {
+                    regions: [],
+                    zones: []
+                }
+            },
             marshaller: {},
-            sslContextFactory: {},
+            sslContextFactory: {
+                trustManagers: []
+            },
             swapSpaceSpi: {},
             transactionConfiguration: {},
             collision: {}

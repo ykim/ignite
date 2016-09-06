@@ -27,8 +27,13 @@ export default ['cachesController', [
 
         const blank = {
             evictionPolicy: {},
-            cacheStoreFactory: {},
-            nearConfiguration: {}
+            cacheStoreFactory: {
+                CacheHibernateBlobStoreFactory: {
+                    hibernateProperties: []
+                }
+            },
+            nearConfiguration: {},
+            sqlFunctionClasses: []
         };
 
         // We need to initialize backupItem with empty object in order to properly used from angular directives.
