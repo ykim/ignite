@@ -21,63 +21,110 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ConcurrentMap;
-import org.apache.ignite.cache.query.QueryDetailsMetrics;
 import org.apache.ignite.cache.query.QueryMetrics;
+import org.apache.ignite.internal.util.GridAtomicLong;
 import org.apache.ignite.internal.util.typedef.internal.S;
-import org.apache.ignite.internal.util.typedef.internal.U;
-import org.jsr166.ConcurrentLinkedHashMap;
+import org.jsr166.LongAdder8;
 
 /**
  * Adapter for {@link QueryMetrics}.
  */
-public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapter implements QueryMetrics {
+public class GridCacheQueryMetricsAdapter implements QueryMetrics, Externalizable {
     /** */
     private static final long serialVersionUID = 0L;
 
-    /** History size. */
-    private final int detailsHistSz;
+    /** Minimum time of execution. */
+    private final GridAtomicLong minTime = new GridAtomicLong();
 
-    /** Map with metrics history for latest queries. */
-    private final ConcurrentMap<QueryMetricsKey, GridCacheQueryDetailsMetricsAdapter> details;
+    /** Maximum time of execution. */
+    private final GridAtomicLong maxTime = new GridAtomicLong();
 
-    /**
-     * @param detailsHistSz Query metrics history size.
+    /** Sum of execution time for all completed queries. */
+    private final LongAdder8 sumTime = new LongAdder8();
+
+    /** Average time of execution.
+     * If doesn't equal zero then this metrics set is copy from remote node and doesn't actually update.
      */
-    public GridCacheQueryMetricsAdapter(int detailsHistSz) {
-        this.detailsHistSz = detailsHistSz;
+    private double avgTime;
 
-        details = new ConcurrentLinkedHashMap<>(detailsHistSz, 0.75f, 16, detailsHistSz > 0 ? detailsHistSz : 1);
+    /** Number of executions. */
+    private final LongAdder8 execs = new LongAdder8();
+
+    /** Number of completed executions. */
+    private final LongAdder8 completed = new LongAdder8();
+
+    /** Number of fails. */
+    private final LongAdder8 fails = new LongAdder8();
+
+    /** {@inheritDoc} */
+    @Override public long minimumTime() {
+        return minTime.get();
     }
 
     /** {@inheritDoc} */
-    @Override public List<QueryDetailsMetrics> details() {
-        return detailsHistSz > 0 ? new ArrayList<QueryDetailsMetrics>(details.values()) : Collections.<QueryDetailsMetrics>emptyList();
+    @Override public long maximumTime() {
+        return maxTime.get();
+    }
+
+    /** {@inheritDoc} */
+    @Override public double averageTime() {
+        if (avgTime > 0)
+            return avgTime;
+        else {
+            long val = completed.sum();
+
+            return val > 0 ? sumTime.sum() / val : 0;
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override public int executions() {
+        return execs.intValue();
+    }
+
+    /**
+     * Gets total number of completed executions of query.
+     * This value is actual only for local node.
+     *
+     * @return Number of completed executions.
+     */
+    public int completedExecutions() {
+        return completed.intValue();
+    }
+
+    /** {@inheritDoc} */
+    @Override public int fails() {
+        return fails.intValue();
+    }
+
+    /**
+     * Callback for query execution.
+     *
+     * @param fail {@code True} query executed unsuccessfully {@code false} otherwise.
+     */
+    public void onQueryExecute(boolean fail) {
+        execs.increment();
+
+        if (fail)
+            fails.increment();
     }
 
     /**
      * Callback for completion of query execution.
      *
-     * @param qryType Query type.
-     * @param qry Query description.
      * @param duration Duration of queue execution.
      * @param fail {@code True} query executed unsuccessfully {@code false} otherwise.
      */
-    public void onQueryCompleted(GridCacheQueryType qryType, String qry, long duration, boolean fail) {
-        onQueryCompleted(duration, fail);
+    public void onQueryCompleted(long duration, boolean fail) {
+        minTime.setIfLess(duration);
+        maxTime.setIfGreater(duration);
 
-        QueryMetricsKey key = new QueryMetricsKey(qryType, qry);
+        if (fail)
+            fails.increment();
+        else {
+            completed.increment();
 
-        if (detailsHistSz > 0) {
-            if (!details.containsKey(key))
-                details.putIfAbsent(key, new GridCacheQueryDetailsMetricsAdapter());
-
-            GridCacheQueryDetailsMetricsAdapter dm = details.get(key);
-
-            dm.onQueryCompleted(duration, fail);
+            sumTime.add(duration);
         }
     }
 
@@ -87,111 +134,40 @@ public class GridCacheQueryMetricsAdapter extends GridCacheQueryBaseMetricsAdapt
      * @return Copy.
      */
     public GridCacheQueryMetricsAdapter copy() {
-        GridCacheQueryMetricsAdapter m = new GridCacheQueryMetricsAdapter(detailsHistSz);
+        GridCacheQueryMetricsAdapter m = new GridCacheQueryMetricsAdapter();
 
         // Not synchronized because accuracy isn't critical.
-        copy(m);
-
-        if (detailsHistSz > 0)
-            m.details.putAll(details);
+        m.fails.add(fails.sum());
+        m.minTime.set(minTime.get());
+        m.maxTime.set(maxTime.get());
+        m.execs.add(execs.sum());
+        m.completed.add(completed.sum());
+        m.sumTime.add(sumTime.sum());
+        m.avgTime = avgTime;
 
         return m;
     }
 
     /** {@inheritDoc} */
     @Override public void writeExternal(ObjectOutput out) throws IOException {
-        super.writeExternal(out);
-
-        U.writeMap(out, details);
+        out.writeLong(minTime.get());
+        out.writeLong(maxTime.get());
+        out.writeDouble(averageTime());
+        out.writeInt(execs.intValue());
+        out.writeInt(fails.intValue());
     }
 
     /** {@inheritDoc} */
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        super.readExternal(in);
-
-        details.putAll(U.<QueryMetricsKey, GridCacheQueryDetailsMetricsAdapter>readMap(in));
+        minTime.set(in.readLong());
+        maxTime.set(in.readLong());
+        avgTime = in.readDouble();
+        execs.add(in.readInt());
+        fails.add(in.readInt());
     }
 
     /** {@inheritDoc} */
     @Override public String toString() {
         return S.toString(GridCacheQueryMetricsAdapter.class, this);
-    }
-
-    /**
-     * Key for query metrics to store in map.
-     */
-    private static class QueryMetricsKey implements Externalizable {
-        /** Query type. */
-        private GridCacheQueryType qryType;
-
-        /** Query text descriptor: SQL, cache name, search text, ... */
-        private String qry;
-
-
-        /**
-         * Required by {@link Externalizable}.
-         */
-        public QueryMetricsKey() {
-            // No-op.
-        }
-
-        /**
-         * Constructor.
-         *
-         * @param qryType Query type.
-         * @param qry Query text descriptor.
-         */
-        public QueryMetricsKey(GridCacheQueryType qryType, String qry) {
-            this.qryType = qryType;
-            this.qry = qry;
-        }
-
-        /**
-         * @return Query type.
-         */
-        public GridCacheQueryType queryType() {
-            return qryType;
-        }
-
-        /**
-         * @return Query text descriptor: SQL, cache name, search text, ...
-         */
-        public String query() {
-            return qry;
-        }
-
-        /** {@inheritDoc} */
-        @Override public void writeExternal(ObjectOutput out) throws IOException {
-            U.writeEnum(out, qryType);
-            U.writeString(out, qry);
-        }
-
-        /** {@inheritDoc} */
-        @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-            qryType = GridCacheQueryType.fromOrdinal(in.readByte());
-            qry = U.readString(in);
-        }
-
-        /** {@inheritDoc} */
-        @Override public boolean equals(Object o) {
-            if (this == o)
-                return true;
-
-            if (o == null || getClass() != o.getClass())
-                return false;
-
-            QueryMetricsKey key = (QueryMetricsKey)o;
-
-            return qryType == key.qryType && qry.equals(key.qry);
-        }
-
-        /** {@inheritDoc} */
-        @Override public int hashCode() {
-            int res = qryType.hashCode();
-
-            res = 31 * res + qry.hashCode();
-
-            return res;
-        }
     }
 }

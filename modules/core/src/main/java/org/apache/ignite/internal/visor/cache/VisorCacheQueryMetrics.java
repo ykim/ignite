@@ -17,9 +17,6 @@
 
 package org.apache.ignite.internal.visor.cache;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.ignite.cache.query.QueryDetailsMetrics;
 import org.apache.ignite.cache.query.QueryMetrics;
 import org.apache.ignite.internal.util.typedef.internal.S;
 
@@ -30,9 +27,6 @@ public class VisorCacheQueryMetrics extends VisorCacheQueryBaseMetrics {
     /** */
     private static final long serialVersionUID = 0L;
 
-    /** List of query metrics aggregated by query type and textual representation. */
-    private List<VisorCacheQueryDetailsMetrics> details;
-
     /**
      * @param m Cache query metrics.
      * @return Data transfer object for given cache metrics.
@@ -40,21 +34,7 @@ public class VisorCacheQueryMetrics extends VisorCacheQueryBaseMetrics {
     public VisorCacheQueryMetrics from(QueryMetrics m) {
         init(m.minimumTime(), m.maximumTime(), m.averageTime(), m.executions(), m.fails());
 
-        List<QueryDetailsMetrics> mds = m.details();
-
-        details = new ArrayList<>(mds.size());
-
-        for (QueryDetailsMetrics md : mds)
-            details.add(new VisorCacheQueryDetailsMetrics().from(md));
-
         return this;
-    }
-
-    /**
-     * @return List of query metrics aggregated by query type and textual representation.
-     */
-    public List<VisorCacheQueryDetailsMetrics> details() {
-        return details;
     }
 
     /** {@inheritDoc} */

@@ -17,7 +17,6 @@
 
 package org.apache.ignite.cache.query;
 
-import java.util.List;
 import org.apache.ignite.internal.processors.cache.query.CacheQuery;
 
 /**
@@ -60,9 +59,4 @@ public interface QueryMetrics {
      * @return Total number of times a query execution failed.
      */
     public int fails();
-
-    /**
-     * List of query metrics aggregated by query type and textual representation.
-     */
-    public List<QueryDetailsMetrics> details();
 }

@@ -34,6 +34,27 @@ public interface QueryDetailsMetrics {
     public String query();
 
     /**
+     * Gets total number execution of query.
+     *
+     * @return Number of executions.
+     */
+    public int executions();
+
+    /**
+     * Gets number of completed execution of query.
+     *
+     * @return Number of completed executions.
+     */
+    public int completed();
+
+    /**
+     * Gets number of times a query execution failed.
+     *
+     * @return Number of times a query execution failed.
+     */
+    public int fails();
+
+    /**
      * Gets minimum execution time of query.
      *
      * @return Minimum execution time of query.
@@ -55,16 +76,9 @@ public interface QueryDetailsMetrics {
     public double averageTime();
 
     /**
-     * Gets total number execution of query.
+     * Gets total time of all query executions.
      *
-     * @return Number of executions.
+     * @return Total time of all query executions.
      */
-    public int executions();
-
-    /**
-     * Gets total number of times a query execution failed.
-     *
-     * @return Total number of times a query execution failed.
-     */
-    public int fails();
+    public long totalTime();
 }

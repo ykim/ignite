@@ -64,6 +64,7 @@ import org.apache.ignite.internal.processors.cache.GridCacheInternal;
 import org.apache.ignite.internal.processors.cache.GridCacheManagerAdapter;
 import org.apache.ignite.internal.processors.cache.GridCacheOffheapSwapEntry;
 import org.apache.ignite.internal.processors.cache.GridCacheSwapEntryImpl;
+import org.apache.ignite.internal.processors.cache.GridCacheUtilityKey;
 import org.apache.ignite.internal.processors.cache.IgniteCacheExpiryPolicy;
 import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
@@ -144,7 +145,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     private int maxIterCnt;
 
     /** */
-    private volatile GridCacheQueryMetricsAdapter metrics = new GridCacheQueryMetricsAdapter(5); // TODO: IGNITE-3443 take from cfg.
+    private volatile GridCacheQueryMetricsAdapter metrics = new GridCacheQueryMetricsAdapter();
 
     /** */
     private final ConcurrentMap<UUID, RequestFutureMap> qryIters =
@@ -2075,7 +2076,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * Resets metrics.
      */
     public void resetMetrics() {
-        metrics = new GridCacheQueryMetricsAdapter(5); // TODO: IGNITE-3443 take from cfg.
+        metrics = new GridCacheQueryMetricsAdapter();
     }
 
     /**
@@ -2092,7 +2093,26 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @param fail {@code true} if execution failed.
      */
     public void onCompleted(GridCacheQueryType qryType, String qry, long duration, boolean fail) {
-        metrics.onQueryCompleted(qryType, qry, duration, fail);
+        metrics.onQueryCompleted(duration, fail);
+
+        // TODO IGNITE-3443 execute in separate thread and use entry processor.
+        try {
+            IgniteInternalCache<GridCacheUtilityKey, GridCacheQueryDetailsMetricsAdapter> cache = cctx.grid().utilityCache();
+
+            GridCacheQueryDetailsMetricsKey key = new GridCacheQueryDetailsMetricsKey(qryType, qry);
+
+            GridCacheQueryDetailsMetricsAdapter val = cache.get(key);
+
+            if (cache == null)
+                val = new GridCacheQueryDetailsMetricsAdapter(qryType, qry);
+
+            // TODO IGNITE-3443 val.onCompleted(duration, fail);
+
+            cache.put(key, val);
+        }
+        catch (IgniteCheckedException e) {
+            throw new IgniteException(e);
+        }
     }
 
     /**
