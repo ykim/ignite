@@ -41,6 +41,9 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 import javax.cache.Cache;
 import javax.cache.expiry.ExpiryPolicy;
+import javax.cache.processor.EntryProcessor;
+import javax.cache.processor.EntryProcessorException;
+import javax.cache.processor.MutableEntry;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
@@ -64,7 +67,6 @@ import org.apache.ignite.internal.processors.cache.GridCacheInternal;
 import org.apache.ignite.internal.processors.cache.GridCacheManagerAdapter;
 import org.apache.ignite.internal.processors.cache.GridCacheOffheapSwapEntry;
 import org.apache.ignite.internal.processors.cache.GridCacheSwapEntryImpl;
-import org.apache.ignite.internal.processors.cache.GridCacheUtilityKey;
 import org.apache.ignite.internal.processors.cache.IgniteCacheExpiryPolicy;
 import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
@@ -116,6 +118,7 @@ import org.apache.ignite.spi.indexing.IndexingSpi;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 
+import static java.awt.SystemColor.info;
 import static org.apache.ignite.cache.CacheMode.LOCAL;
 import static org.apache.ignite.events.EventType.EVT_CACHE_QUERY_EXECUTED;
 import static org.apache.ignite.events.EventType.EVT_CACHE_QUERY_OBJECT_READ;
@@ -2097,23 +2100,10 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
         // TODO IGNITE-3443 execute in separate thread and use entry processor.
         try {
-            IgniteInternalCache<GridCacheQueryDetailsMetricsKey, Map<String, GridCacheQueryDetailsMetricsAdapter>> cache =
+            IgniteInternalCache<GridCacheQueryDetailsMetricsKey, Map<Integer, GridCacheQueryDetailsMetricsAdapter>> cache =
                 (IgniteInternalCache)cctx.grid().utilityCache();
 
-            cache.invoke(GridCacheQueryDetailsMetricsKey.INSTANCE)
-
-            Map<String, GridCacheQueryDetailsMetricsAdapter> metricsMap = cache.get(GridCacheQueryDetailsMetricsKey.INSTANCE);
-
-                GridCacheQueryDetailsMetricsKey key = new GridCacheQueryDetailsMetricsKey(qryType, qry);
-
-            GridCacheQueryDetailsMetricsAdapter val = cache.get(key);
-
-            if (cache == null)
-                val = new GridCacheQueryDetailsMetricsAdapter(qryType, qry);
-
-            // TODO IGNITE-3443 val.onCompleted(duration, fail);
-
-            cache.put(key, val);
+            cache.invoke(GridCacheQueryDetailsMetricsKey.INSTANCE, new AddMetricsProcessor(qryType, qry));  /* TODO IGNITE-3443 val.onCompleted(duration, fail); */
         }
         catch (IgniteCheckedException e) {
             throw new IgniteException(e);
@@ -3566,6 +3556,77 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
          */
         boolean isCanceled(Long key) {
             return canceled != null && canceled.contains(key);
+        }
+    }
+
+    /**
+     * Entry processor to add metrics.
+     */
+    private static class AddMetricsProcessor implements
+        EntryProcessor<GridCacheQueryDetailsMetricsKey, Map<Integer, GridCacheQueryDetailsMetricsAdapter>, Void>,
+        Externalizable {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private GridCacheQueryType qryType;
+
+        /** */
+        private String qry;
+
+        /**
+         * Required by {@link Externalizable}.
+         */
+        public AddMetricsProcessor() {
+            // No-op.
+        }
+
+        /**
+         * Full constructor.
+         *
+         * @param qryType Query type.
+         * @param qry Query description.
+         */
+        public AddMetricsProcessor(GridCacheQueryType qryType, String qry) {
+            this.qryType = qryType;
+            this.qry = qry;
+        }
+
+        /** {@inheritDoc} */
+        @Override public void writeExternal(ObjectOutput out) throws IOException {
+
+        }
+
+        /** {@inheritDoc} */
+        @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+
+        }
+
+        /** {@inheritDoc} */
+        @Override public Void process(
+            MutableEntry<GridCacheQueryDetailsMetricsKey, Map<Integer, GridCacheQueryDetailsMetricsAdapter>> entry,
+            Object... arguments) throws EntryProcessorException {
+            Map<Integer, GridCacheQueryDetailsMetricsAdapter> map = entry.getValue();
+
+            Integer qryHash = 31 * qryType.hashCode() + qry.hashCode();
+
+            if (map == null)
+                map = new HashMap<>();
+            else
+                map = new HashMap<>(map);
+
+            GridCacheQueryDetailsMetricsAdapter qryMetrics = map.get(qryHash);
+
+            if (qryMetrics == null)
+                qryMetrics = new GridCacheQueryDetailsMetricsAdapter(qryType, qry);
+
+            // TODO: update metrics
+
+            map.put(qryHash, qryMetrics);
+
+            entry.setValue(map);
+
+            return null;
         }
     }
 }
