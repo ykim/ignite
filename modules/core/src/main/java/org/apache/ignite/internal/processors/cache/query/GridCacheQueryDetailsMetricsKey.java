@@ -21,74 +21,41 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import org.apache.ignite.internal.processors.cache.GridCacheUtilityKey;
-import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.internal.processors.cache.GridCacheInternal;
 
 /**
  * Key for query details metrics to store in system cache.
  */
-public class GridCacheQueryDetailsMetricsKey extends GridCacheUtilityKey<GridCacheQueryDetailsMetricsKey> implements Externalizable {
-    /** Query type. */
-    private GridCacheQueryType qryType;
+public class GridCacheQueryDetailsMetricsKey implements GridCacheInternal, Externalizable {
+    /** */
+    private static final long serialVersionUID = 0L;
 
-    /** Query text descriptor: SQL, cache name, search text, ... */
-    private String qry;
+    /** */
+    public static final GridCacheQueryDetailsMetricsKey INSTANCE =
+        new GridCacheQueryDetailsMetricsKey();
 
-    /**
-     * Required by {@link Externalizable}.
-     */
-    public GridCacheQueryDetailsMetricsKey() {
-        // No-op.
+    /** {@inheritDoc} */
+    @Override public int hashCode() {
+        return getClass().getName().hashCode();
     }
 
-    /**
-     * Constructor.
-     *
-     * @param qryType Query type.
-     * @param qry Query text descriptor.
-     */
-    public GridCacheQueryDetailsMetricsKey(GridCacheQueryType qryType, String qry) {
-        this.qryType = qryType;
-        this.qry = qry;
-    }
-
-    /**
-     * @return Query type.
-     */
-    public GridCacheQueryType queryType() {
-        return qryType;
-    }
-
-    /**
-     * @return Query text descriptor: SQL, cache name, search text, ...
-     */
-    public String query() {
-        return qry;
+    /** {@inheritDoc} */
+    @Override public boolean equals(Object obj) {
+        return obj == this || (obj instanceof GridCacheQueryDetailsMetricsKey);
     }
 
     /** {@inheritDoc} */
     @Override public void writeExternal(ObjectOutput out) throws IOException {
-        U.writeEnum(out, qryType);
-        U.writeString(out, qry);
+        // No-op.
     }
 
     /** {@inheritDoc} */
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        qryType = GridCacheQueryType.fromOrdinal(in.readByte());
-        qry = U.readString(in);
+        // No-op.
     }
 
     /** {@inheritDoc} */
-    @Override protected boolean equalsx(GridCacheQueryDetailsMetricsKey that) {
-        return qryType == that.qryType && qry.equals(that.qry);
-    }
-
-    /** {@inheritDoc} */
-    @Override public int hashCode() {
-        int res = qryType.hashCode();
-
-        res = 31 * res + qry.hashCode();
-
-        return res;
+    @Override public String toString() {
+        return "GridCacheQueryDetailsMetricsKey []";
     }
 }

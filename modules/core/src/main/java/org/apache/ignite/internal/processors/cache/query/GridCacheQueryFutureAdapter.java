@@ -157,7 +157,7 @@ public abstract class GridCacheQueryFutureAdapter<K, V, R> extends GridFutureAda
 
         GridCacheQueryAdapter<?> qryAdapter = qry.query();
 
-        qry.query().onCompleted(qryAdapter.type(), qryAdapter.clause(), res, err, startTime(), duration());
+        qryAdapter.onCompleted(res, err, startTime(), duration());
 
         return super.onDone(res, err);
     }

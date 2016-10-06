@@ -2097,9 +2097,14 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
         // TODO IGNITE-3443 execute in separate thread and use entry processor.
         try {
-            IgniteInternalCache<GridCacheUtilityKey, GridCacheQueryDetailsMetricsAdapter> cache = cctx.grid().utilityCache();
+            IgniteInternalCache<GridCacheQueryDetailsMetricsKey, Map<String, GridCacheQueryDetailsMetricsAdapter>> cache =
+                (IgniteInternalCache)cctx.grid().utilityCache();
 
-            GridCacheQueryDetailsMetricsKey key = new GridCacheQueryDetailsMetricsKey(qryType, qry);
+            cache.invoke(GridCacheQueryDetailsMetricsKey.INSTANCE)
+
+            Map<String, GridCacheQueryDetailsMetricsAdapter> metricsMap = cache.get(GridCacheQueryDetailsMetricsKey.INSTANCE);
+
+                GridCacheQueryDetailsMetricsKey key = new GridCacheQueryDetailsMetricsKey(qryType, qry);
 
             GridCacheQueryDetailsMetricsAdapter val = cache.get(key);
 
