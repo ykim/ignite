@@ -20,7 +20,7 @@ package org.apache.ignite.cache.query;
 import org.apache.ignite.internal.processors.cache.query.GridCacheQueryType;
 
 /**
- * Per individual query metrics aggregated by query type and Textual representation.
+ * Query metrics aggregated by query type and its textual representation.
  */
 public interface QueryDetailsMetrics {
     /**

@@ -26,8 +26,8 @@ import org.apache.ignite.internal.processors.cache.GridCacheUtilityKey;
 /**
  * Key for query details metrics to store in system cache.
  */
-public class GridCacheQueryDetailsMetricsKey extends GridCacheUtilityKey<GridCacheQueryDetailsMetricsKey> implements
-    Externalizable {
+public class GridCacheQueryDetailsMetricsKey extends GridCacheUtilityKey<GridCacheQueryDetailsMetricsKey>
+    implements Externalizable {
     /** */
     private static final long serialVersionUID = 0L;
 
