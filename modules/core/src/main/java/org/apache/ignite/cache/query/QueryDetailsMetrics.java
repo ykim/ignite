@@ -45,14 +45,14 @@ public interface QueryDetailsMetrics {
      *
      * @return Number of completed executions.
      */
-    public int completed();
+    public int completions();
 
     /**
      * Gets number of times a query execution failed.
      *
      * @return Number of times a query execution failed.
      */
-    public int fails();
+    public int failures();
 
     /**
      * Gets minimum execution time of query.
@@ -81,4 +81,11 @@ public interface QueryDetailsMetrics {
      * @return Total time of all query executions.
      */
     public long totalTime();
+
+    /**
+     * Gets latest query start time.
+     *
+     * @return Latest time query was stared.
+     */
+    public long lastStartTime();
 }

@@ -41,20 +41,23 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     /** Number of executions. */
     private int execs;
 
-    /** Number of completed executions. */
-    private int completed;
+    /** Number of completions executions. */
+    private int completions;
 
-    /** Number of fails. */
-    private int fails;
+    /** Number of failures. */
+    private int failures;
 
     /** Minimum time of execution. */
-    private long minTime;
+    private long minTime = -1;
 
     /** Maximum time of execution. */
     private long maxTime;
 
-    /** Sum of execution time of completed time. */
+    /** Sum of execution time of completions time. */
     private long totalTime;
+
+    /** Sum of execution time of completions time. */
+    private long lastStartTime;
 
     /**
      * Required by {@link Externalizable}.
@@ -75,32 +78,27 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     }
 
     /**
-     * Callback for query execution.
+     * Update metrics on query execution.
      *
-     * @param fail {@code True} query executed unsuccessfully {@code false} otherwise.
-     */
-    public void onQueryExecute(boolean fail) {
-        execs += 1;
-
-        if (fail)
-            fails += 1;
-    }
-
-    /**
-     * Callback for completion of query execution.
-     *
+     * @param startTime Duration of queue execution.
      * @param duration Duration of queue execution.
-     * @param fail {@code True} query executed unsuccessfully {@code false} otherwise.
+     * @param failed {@code True} query executed unsuccessfully {@code false} otherwise.
+     * @param completed {@code True} query executed unsuccessfully {@code false} otherwise.
      */
-    public void onQueryCompleted(long duration, boolean fail) {
-        if (fail)
-            fails += 1;
-        else {
-            completed += 1;
+    public void update(long startTime, long duration, boolean failed, boolean completed) {
+        lastStartTime = startTime;
+
+        if (failed) {
+            execs += 1;
+            failures += 1;
+        }
+        else if (completed) {
+            execs += 1;
+            completions += 1;
 
             totalTime += duration;
 
-            if (minTime == 0 || minTime > duration)
+            if (minTime < 0 || minTime > duration)
                 minTime = duration;
 
             if (maxTime < duration)
@@ -124,18 +122,18 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     }
 
     /** {@inheritDoc} */
-    @Override public int completed() {
-        return completed;
+    @Override public int completions() {
+        return completions;
     }
 
     /** {@inheritDoc} */
-    @Override public int fails() {
-        return execs - completed;
+    @Override public int failures() {
+        return failures;
     }
 
     /** {@inheritDoc} */
     @Override public long minimumTime() {
-        return minTime;
+        return minTime < 0 ? 0 : minTime;
     }
 
     /** {@inheritDoc} */
@@ -145,7 +143,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
 
     /** {@inheritDoc} */
     @Override public double averageTime() {
-        double val = completed;
+        double val = completions;
 
         return val > 0 ? totalTime / val : 0;
     }
@@ -156,11 +154,16 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     }
 
     /** {@inheritDoc} */
+    @Override public long lastStartTime() {
+        return lastStartTime;
+    }
+
+    /** {@inheritDoc} */
     @Override public void writeExternal(ObjectOutput out) throws IOException {
         U.writeEnum(out, qryType);
         U.writeString(out, qry);
         out.writeInt(execs);
-        out.writeInt(completed);
+        out.writeInt(completions);
         out.writeLong(minTime);
         out.writeLong(maxTime);
         out.writeLong(totalTime);
@@ -171,7 +174,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
         qryType = GridCacheQueryType.fromOrdinal(in.readByte());
         qry = U.readString(in);
         execs = in.readInt();
-        completed = in.readInt();
+        completions = in.readInt();
         minTime = in.readLong();
         maxTime = in.readLong();
         totalTime = in.readLong();

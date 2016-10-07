@@ -118,7 +118,6 @@ import org.apache.ignite.spi.indexing.IndexingSpi;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 
-import static java.awt.SystemColor.info;
 import static org.apache.ignite.cache.CacheMode.LOCAL;
 import static org.apache.ignite.events.EventType.EVT_CACHE_QUERY_EXECUTED;
 import static org.apache.ignite.events.EventType.EVT_CACHE_QUERY_OBJECT_READ;
@@ -1729,7 +1728,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             if (updStatisticsIfNeeded) {
                 needUpdStatistics = false;
 
-                cctx.queries().onCompleted(GridCacheQueryType.SCAN, namex, U.currentTimeMillis() - startTime, false);
+                cctx.queries().collectMetrics(GridCacheQueryType.SCAN, namex, startTime,
+                    U.currentTimeMillis() - startTime, false, true);
             }
 
             final boolean readEvt = cctx.gridEvents().isRecordable(EVT_CACHE_QUERY_OBJECT_READ);
@@ -1794,7 +1794,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         }
         catch (Exception e) {
             if (needUpdStatistics)
-                cctx.queries().onCompleted(GridCacheQueryType.SCAN, namex, U.currentTimeMillis() - startTime, true);
+                cctx.queries().collectMetrics(GridCacheQueryType.SCAN, namex, startTime,
+                    U.currentTimeMillis() - startTime, true, false);
 
             throw e;
         }
@@ -2083,30 +2084,23 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     }
 
     /**
-     * @param fail {@code true} if execution failed.
-     */
-    public void onExecuted(boolean fail) {
-        metrics.onQueryExecute(fail);
-    }
-
-    /**
      * @param qryType Query type.
      * @param qry Query description.
+     * @param startTime Query start size.
      * @param duration Execution duration.
-     * @param fail {@code true} if execution failed.
+     * @param failed {@code True} if query execution failed.
+     * @param completed {@code True} if query execution completed.
      */
-    public void onCompleted(GridCacheQueryType qryType, String qry, long duration, boolean fail) {
-        metrics.onQueryCompleted(duration, fail);
+    public void collectMetrics(GridCacheQueryType qryType, String qry, long startTime, long duration, boolean failed,
+        boolean completed) {
+        if (failed || completed) {
+            metrics.update(duration, failed, completed);
 
-        // TODO IGNITE-3443 execute in separate thread and use entry processor.
-        try {
             IgniteInternalCache<GridCacheQueryDetailsMetricsKey, Map<Integer, GridCacheQueryDetailsMetricsAdapter>> cache =
-                (IgniteInternalCache)cctx.grid().utilityCache();
+                cctx.grid().utilityCache();
 
-            cache.invoke(GridCacheQueryDetailsMetricsKey.INSTANCE, new AddMetricsProcessor(qryType, qry));  /* TODO IGNITE-3443 val.onCompleted(duration, fail); */
-        }
-        catch (IgniteCheckedException e) {
-            throw new IgniteException(e);
+            cache.invokeAsync(GridCacheQueryDetailsMetricsKey.INSTANCE,
+                new AddMetricsProcessor(qryType, qry, startTime, duration, failed, completed));
         }
     }
 
@@ -3574,6 +3568,18 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         /** */
         private String qry;
 
+        /** */
+        private long startTime;
+
+        /** */
+        private long duration;
+
+        /** */
+        private boolean failed;
+
+        /** */
+        private boolean completed;
+
         /**
          * Required by {@link Externalizable}.
          */
@@ -3586,20 +3592,39 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
          *
          * @param qryType Query type.
          * @param qry Query description.
+         * @param startTime Query started time.
+         * @param duration Execution duration.
+         * @param failed {@code true} if execution failed.
+         * @param completed {@code true} if query completed.
          */
-        public AddMetricsProcessor(GridCacheQueryType qryType, String qry) {
+        public AddMetricsProcessor(GridCacheQueryType qryType, String qry, long startTime, long duration,
+            boolean failed, boolean completed) {
             this.qryType = qryType;
             this.qry = qry;
+            this.startTime = startTime;
+            this.duration = duration;
+            this.failed = failed;
+            this.completed = completed;
         }
 
         /** {@inheritDoc} */
         @Override public void writeExternal(ObjectOutput out) throws IOException {
-
+            U.writeEnum(out, qryType);
+            U.writeString(out, qry);
+            out.writeLong(startTime);
+            out.writeLong(duration);
+            out.writeBoolean(failed);
+            out.writeBoolean(completed);
         }
 
         /** {@inheritDoc} */
         @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-
+            qryType = GridCacheQueryType.fromOrdinal(in.readByte());
+            qry = U.readString(in);
+            startTime = in.readLong();
+            duration = in.readLong();
+            failed = in.readBoolean();
+            completed = in.readBoolean();
         }
 
         /** {@inheritDoc} */
@@ -3608,19 +3633,19 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             Object... arguments) throws EntryProcessorException {
             Map<Integer, GridCacheQueryDetailsMetricsAdapter> map = entry.getValue();
 
-            Integer qryHash = 31 * qryType.hashCode() + qry.hashCode();
-
             if (map == null)
                 map = new HashMap<>();
             else
                 map = new HashMap<>(map);
+
+            Integer qryHash = 31 * qryType.hashCode() + qry.hashCode();
 
             GridCacheQueryDetailsMetricsAdapter qryMetrics = map.get(qryHash);
 
             if (qryMetrics == null)
                 qryMetrics = new GridCacheQueryDetailsMetricsAdapter(qryType, qry);
 
-            // TODO: update metrics
+            qryMetrics.update(startTime, duration, failed, completed);
 
             map.put(qryHash, qryMetrics);
 

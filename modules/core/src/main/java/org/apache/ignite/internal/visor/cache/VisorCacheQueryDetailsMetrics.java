@@ -17,14 +17,16 @@
 
 package org.apache.ignite.internal.visor.cache;
 
+import java.io.Serializable;
 import org.apache.ignite.cache.query.QueryDetailsMetrics;
+import org.apache.ignite.internal.LessNamingBean;
 import org.apache.ignite.internal.processors.cache.query.GridCacheQueryType;
 import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
  * Data transfer object for cache query metrics.
  */
-public class VisorCacheQueryDetailsMetrics extends VisorCacheQueryBaseMetrics {
+public class VisorCacheQueryDetailsMetrics implements Serializable, LessNamingBean {
     /** */
     private static final long serialVersionUID = 0L;
 
@@ -34,15 +36,41 @@ public class VisorCacheQueryDetailsMetrics extends VisorCacheQueryBaseMetrics {
     /** Textual representation of query. */
     private String qry;
 
+    /** Minimum execution time of query. */
+    private long minTime;
+
+    /** Maximum execution time of query. */
+    private long maxTime;
+
+    /** Average execution time of query. */
+    private double avgTime;
+
+    /** Number of query executions. */
+    private int execs;
+
+    /** Number of failed queries. */
+    private int failures;
+
+    /** Number of completed queries. */
+    private int completions;
+
+    /** Latest time query was stared. */
+    private long lastStartTime;
+
     /**
      * @param m Cache query metrics.
      * @return Data transfer object for given cache metrics.
      */
     public VisorCacheQueryDetailsMetrics from(QueryDetailsMetrics m) {
-        init(m.minimumTime(), m.maximumTime(), m.averageTime(), m.executions(), m.fails());
-
         qryType = m.queryType();
         qry = m.query();
+        minTime = m.minimumTime();
+        maxTime = m.maximumTime();
+        avgTime = m.averageTime();
+        execs = m.executions();
+        failures = m.failures();
+        completions = m.completions();
+        lastStartTime = m.lastStartTime();
 
         return this;
     }
@@ -59,6 +87,55 @@ public class VisorCacheQueryDetailsMetrics extends VisorCacheQueryBaseMetrics {
      */
     public String query() {
         return qry;
+    }
+
+    /**
+     * @return Minimum execution time of query.
+     */
+    public long minimumTime() {
+        return minTime;
+    }
+
+    /**
+     * @return Maximum execution time of query.
+     */
+    public long maximumTime() {
+        return maxTime;
+    }
+
+    /**
+     * @return Average execution time of query.
+     */
+    public double averageTime() {
+        return avgTime;
+    }
+
+    /**
+     * @return Number of executions.
+     */
+    public int executions() {
+        return execs;
+    }
+
+    /**
+     * @return Total number of times a query execution failed.
+     */
+    public int failures() {
+        return failures;
+    }
+
+    /**
+     * @return Total number of times a query execution completed.
+     */
+    public int completions() {
+        return completions;
+    }
+
+    /**
+     * @return Latest time query was stared.
+     */
+    public long lastStartTime() {
+        return lastStartTime;
     }
 
     /** {@inheritDoc} */

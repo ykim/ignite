@@ -21,18 +21,18 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import org.apache.ignite.internal.processors.cache.GridCacheInternal;
+import org.apache.ignite.internal.processors.cache.GridCacheUtilityKey;
 
 /**
  * Key for query details metrics to store in system cache.
  */
-public class GridCacheQueryDetailsMetricsKey implements GridCacheInternal, Externalizable {
+public class GridCacheQueryDetailsMetricsKey extends GridCacheUtilityKey<GridCacheQueryDetailsMetricsKey> implements
+    Externalizable {
     /** */
     private static final long serialVersionUID = 0L;
 
     /** */
-    public static final GridCacheQueryDetailsMetricsKey INSTANCE =
-        new GridCacheQueryDetailsMetricsKey();
+    public static final GridCacheQueryDetailsMetricsKey INSTANCE = new GridCacheQueryDetailsMetricsKey();
 
     /** {@inheritDoc} */
     @Override public int hashCode() {
@@ -40,8 +40,8 @@ public class GridCacheQueryDetailsMetricsKey implements GridCacheInternal, Exter
     }
 
     /** {@inheritDoc} */
-    @Override public boolean equals(Object obj) {
-        return obj == this || (obj instanceof GridCacheQueryDetailsMetricsKey);
+    @Override public boolean equalsx(GridCacheQueryDetailsMetricsKey that) {
+        return true;
     }
 
     /** {@inheritDoc} */

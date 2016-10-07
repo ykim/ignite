@@ -17,24 +17,82 @@
 
 package org.apache.ignite.internal.visor.cache;
 
+import java.io.Serializable;
 import org.apache.ignite.cache.query.QueryMetrics;
+import org.apache.ignite.internal.LessNamingBean;
 import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
  * Data transfer object for cache query metrics.
  */
-public class VisorCacheQueryMetrics extends VisorCacheQueryBaseMetrics {
+public class VisorCacheQueryMetrics implements Serializable, LessNamingBean {
     /** */
     private static final long serialVersionUID = 0L;
+
+    /** Minimum execution time of query. */
+    private long minTime;
+
+    /** Maximum execution time of query. */
+    private long maxTime;
+
+    /** Average execution time of query. */
+    private double avgTime;
+
+    /** Number of executions. */
+    private int execs;
+
+    /** Total number of times a query execution failed. */
+    private int fails;
 
     /**
      * @param m Cache query metrics.
      * @return Data transfer object for given cache metrics.
      */
-    public VisorCacheQueryMetrics from(QueryMetrics m) {
-        init(m.minimumTime(), m.maximumTime(), m.averageTime(), m.executions(), m.fails());
+    public static VisorCacheQueryMetrics from(QueryMetrics m) {
+        VisorCacheQueryMetrics qm = new VisorCacheQueryMetrics();
 
-        return this;
+        qm.minTime = m.minimumTime();
+        qm.maxTime = m.maximumTime();
+        qm.avgTime = m.averageTime();
+        qm.execs = m.executions();
+        qm.fails = m.fails();
+
+        return qm;
+    }
+
+    /**
+     * @return Minimum execution time of query.
+     */
+    public long minimumTime() {
+        return minTime;
+    }
+
+    /**
+     * @return Maximum execution time of query.
+     */
+    public long maximumTime() {
+        return maxTime;
+    }
+
+    /**
+     * @return Average execution time of query.
+     */
+    public double averageTime() {
+        return avgTime;
+    }
+
+    /**
+     * @return Number of executions.
+     */
+    public int executions() {
+        return execs;
+    }
+
+    /**
+     * @return Total number of times a query execution failed.
+     */
+    public int fails() {
+        return fails;
     }
 
     /** {@inheritDoc} */

@@ -1695,10 +1695,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             throw new IgniteCheckedException(e);
         }
         finally {
-            cctx.queries().onExecuted(err != null);
-
-            if (complete && err == null)
-                onCompleted(qryType, qry, cctx, res, null, startTime, U.currentTimeMillis() - startTime, log);
+            collectMetrics(qryType, qry, cctx, res, err, startTime, U.currentTimeMillis() - startTime, complete, log);
         }
     }
 
@@ -1712,13 +1709,13 @@ public class GridQueryProcessor extends GridProcessorAdapter {
      * @param duration Duration.
      * @param log Logger.
      */
-    public static void onCompleted(GridCacheQueryType qryType, String qry, GridCacheContext<?, ?> cctx, Object res, Throwable err,
-        long startTime, long duration, IgniteLogger log) {
+    public static void collectMetrics(GridCacheQueryType qryType, String qry, GridCacheContext<?, ?> cctx, Object res,
+        Throwable err, long startTime, long duration, boolean completed, IgniteLogger log) {
         boolean fail = err != null;
 
-        cctx.queries().onCompleted(qryType, qry, duration, fail);
+        cctx.queries().collectMetrics(qryType, qry, startTime, duration, fail, completed);
 
-        if (log.isTraceEnabled())
+        if (completed && log.isTraceEnabled())
             log.trace("Query execution completed [startTime=" + startTime +
                 ", duration=" + duration + ", fail=" + fail + ", res=" + res + ']');
     }
