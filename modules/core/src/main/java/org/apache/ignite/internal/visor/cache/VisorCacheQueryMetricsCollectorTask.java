@@ -30,7 +30,6 @@ import org.apache.ignite.internal.processors.cache.query.GridCacheQueryDetailsMe
 import org.apache.ignite.internal.processors.cache.query.GridCacheQueryManager;
 import org.apache.ignite.internal.processors.task.GridInternal;
 import org.apache.ignite.internal.util.typedef.internal.S;
-import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.internal.visor.VisorJob;
 import org.apache.ignite.internal.visor.VisorMultiNodeTask;
 import org.jetbrains.annotations.Nullable;
@@ -42,8 +41,8 @@ import static org.apache.ignite.internal.processors.cache.GridCacheUtils.isSyste
  * Task to collect cache query metrics.
  */
 @GridInternal
-public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void,
-    Map<String, Collection<QueryDetailsMetrics>>, Map<String, Collection<QueryDetailsMetrics>>> {
+public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void, Collection<? extends QueryDetailsMetrics>,
+    Collection<? extends QueryDetailsMetrics>> {
     /** */
     private static final long serialVersionUID = 0L;
 
@@ -53,35 +52,26 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override protected Map<String, Collection<QueryDetailsMetrics>> reduce0(List<ComputeJobResult> results)
+    @Nullable @Override protected Collection<? extends QueryDetailsMetrics> reduce0(List<ComputeJobResult> results)
         throws IgniteException {
-        Map<String, Collection<QueryDetailsMetrics>> taskRes = U.newHashMap(results.size());
-
-        Map<Integer, GridCacheQueryDetailsMetricsAdapter> aggMetrics = new HashMap<>();
+        Map<Integer, GridCacheQueryDetailsMetricsAdapter> taskRes = new HashMap<>();
 
         for (ComputeJobResult res : results) {
-            if (res.getException() == null) {
-                Map<String, Collection<QueryDetailsMetrics>> dm = res.getData();
+            if (res.getException() != null)
+                throw res.getException();
 
-                for (VisorCacheMetrics cm : cms) {
-                    VisorCacheAggregatedMetrics am = grpAggrMetrics.get(cm.name());
+            Collection<QueryDetailsMetrics> metrics = res.getData();
 
-                    if (am == null) {
-                        am = VisorCacheAggregatedMetrics.from(cm);
-
-                        grpAggrMetrics.put(cm.name(), am);
-                    }
-
-                    am.metrics().put(res.getNode().id(), cm);
-                }
-            }
+            VisorCacheQueryMetricsCollectorJob.aggregateMetrics(taskRes, metrics);
         }
+
+        return taskRes.values();
     }
 
     /**
      * Job that will actually collect query metrics.
      */
-    private static class VisorCacheQueryMetricsCollectorJob extends VisorJob<Void, Map<String, Collection<QueryDetailsMetrics>>> {
+    private static class VisorCacheQueryMetricsCollectorJob extends VisorJob<Void, Collection<? extends QueryDetailsMetrics>> {
         /** */
         private static final long serialVersionUID = 0L;
 
@@ -95,25 +85,42 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
             super(arg, debug);
         }
 
+        private static void aggregateMetrics(Map<Integer, GridCacheQueryDetailsMetricsAdapter> res,
+            Collection<QueryDetailsMetrics> metrics) {
+            for (QueryDetailsMetrics m : metrics) {
+                Integer qryHashCode = GridCacheQueryDetailsMetricsAdapter.queryHashCode(m);
+
+                GridCacheQueryDetailsMetricsAdapter aggMetrics = res.get(qryHashCode);
+
+                if (aggMetrics == null) {
+                    aggMetrics = new GridCacheQueryDetailsMetricsAdapter(m.queryType(), m.query());
+
+                    res.put(qryHashCode, aggMetrics);
+                }
+
+                aggMetrics.update(m);
+            }
+        }
+
         /** {@inheritDoc} */
-        @Override protected Map<String, Collection<QueryDetailsMetrics>> run(@Nullable Void arg) throws IgniteException {
+        @Override protected Collection<? extends QueryDetailsMetrics> run(@Nullable Void arg) throws IgniteException {
             IgniteConfiguration cfg = ignite.configuration();
 
             GridCacheProcessor cacheProc = ignite.context().cache();
 
             Collection<String> cacheNames = cacheProc.cacheNames();
 
-            Map<String, Collection<QueryDetailsMetrics>> res = new HashMap<>(cacheNames.size());
+            Map<Integer, GridCacheQueryDetailsMetricsAdapter> jobRes = new HashMap<>();
 
             for (String cacheName : cacheNames) {
                 if (!isSystemCache(cacheName) && isIgfsCache(cfg, cacheName)) {
                     GridCacheQueryManager<Object, Object> qryMgr = cacheProc.cache(cacheName).context().queries();
 
-                    res.put(cacheName, qryMgr.detailsMetrics());
+                    aggregateMetrics(jobRes, qryMgr.detailsMetrics());
                 }
             }
 
-            return null;
+            return jobRes.values();
         }
 
         /** {@inheritDoc} */

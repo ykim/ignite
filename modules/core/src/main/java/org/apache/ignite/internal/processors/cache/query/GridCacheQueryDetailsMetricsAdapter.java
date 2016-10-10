@@ -60,7 +60,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     private long lastStartTime;
 
     /**
-     * Calculate hash code for query.
+     * Calculate hash code for query metrics.
      *
      * @param qryType Query type.
      * @param qry Textual query representation.
@@ -68,6 +68,16 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
      */
     public static Integer queryHashCode(GridCacheQueryType qryType, String qry) {
         return  31 * qryType.hashCode() + qry.hashCode();
+    }
+
+    /**
+     * Calculate hash code for query metrics.
+     *
+     * @param m Metrics.
+     * @return Hash code.
+     */
+    public static Integer queryHashCode(QueryDetailsMetrics m) {
+        return  queryHashCode(m.queryType(), m.query());
     }
 
     /**
@@ -115,6 +125,23 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
             if (maxTime < duration)
                 maxTime = duration;
         }
+    }
+
+    public void update(QueryDetailsMetrics m) {
+        if (lastStartTime < m.lastStartTime())
+            lastStartTime = m.lastStartTime();
+
+        execs += m.executions();
+        failures += m.failures();
+        completions += m.completions();
+
+        totalTime += m.totalTime();
+
+        if (minTime < 0 || minTime < m.minimumTime())
+            minTime = m.maximumTime();
+
+        if (maxTime < m.maximumTime())
+            maxTime = m.maximumTime();
     }
 
     /** {@inheritDoc} */
