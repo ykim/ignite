@@ -60,6 +60,17 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     private long lastStartTime;
 
     /**
+     * Calculate hash code for query.
+     *
+     * @param qryType Query type.
+     * @param qry Textual query representation.
+     * @return Hash code.
+     */
+    public static Integer queryHashCode(GridCacheQueryType qryType, String qry) {
+        return  31 * qryType.hashCode() + qry.hashCode();
+    }
+
+    /**
      * Required by {@link Externalizable}.
      */
     public GridCacheQueryDetailsMetricsAdapter() {
