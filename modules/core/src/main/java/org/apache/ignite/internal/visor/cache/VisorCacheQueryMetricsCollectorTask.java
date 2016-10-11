@@ -17,6 +17,7 @@
 
 package org.apache.ignite.internal.visor.cache;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -65,7 +66,7 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
             VisorCacheQueryMetricsCollectorJob.aggregateMetrics(taskRes, metrics);
         }
 
-        return taskRes.values();
+        return new ArrayList<>(taskRes.values());
     }
 
     /**
@@ -85,6 +86,10 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
             super(arg, debug);
         }
 
+        /**
+         * @param res Response.
+         * @param metrics Metrics.
+         */
         private static void aggregateMetrics(Map<Integer, GridCacheQueryDetailsMetricsAdapter> res,
             Collection<QueryDetailsMetrics> metrics) {
             for (QueryDetailsMetrics m : metrics) {
@@ -113,14 +118,14 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
             Map<Integer, GridCacheQueryDetailsMetricsAdapter> jobRes = new HashMap<>();
 
             for (String cacheName : cacheNames) {
-                if (!isSystemCache(cacheName) && isIgfsCache(cfg, cacheName)) {
+                if (!isSystemCache(cacheName) && !isIgfsCache(cfg, cacheName)) {
                     GridCacheQueryManager<Object, Object> qryMgr = cacheProc.cache(cacheName).context().queries();
 
                     aggregateMetrics(jobRes, qryMgr.detailsMetrics());
                 }
             }
 
-            return jobRes.values();
+            return new ArrayList<>(jobRes.values());
         }
 
         /** {@inheritDoc} */

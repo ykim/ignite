@@ -183,7 +183,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         qryProc = cctx.kernalContext().query();
         space = cctx.name();
         maxIterCnt = cctx.config().getMaxQueryIteratorsCount();
-        qryHistSz = cctx.config().getQueryMetricsHistorySize();
+        qryHistSz = 100; // TODO IGNITE-3443 cctx.config().getQueryMetricsHistorySize();
 
         lsnr = new GridLocalEventListener() {
             @Override public void onEvent(Event evt) {

@@ -158,8 +158,8 @@ public class VisorTaskUtils {
      * @param name Grid-style nullable name.
      * @return Name with {@code null} replaced to &lt;default&gt;.
      */
-    public static String escapeName(@Nullable String name) {
-        return name == null ? DFLT_EMPTY_NAME : name;
+    public static String escapeName(@Nullable Object name) {
+        return name == null ? DFLT_EMPTY_NAME : name.toString();
     }
 
     /**
