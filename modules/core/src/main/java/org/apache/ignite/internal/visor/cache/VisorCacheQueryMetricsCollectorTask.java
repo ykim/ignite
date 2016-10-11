@@ -27,8 +27,8 @@ import org.apache.ignite.cache.query.QueryDetailsMetrics;
 import org.apache.ignite.compute.ComputeJobResult;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.processors.cache.GridCacheProcessor;
+import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
 import org.apache.ignite.internal.processors.cache.query.GridCacheQueryDetailsMetricsAdapter;
-import org.apache.ignite.internal.processors.cache.query.GridCacheQueryManager;
 import org.apache.ignite.internal.processors.task.GridInternal;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.visor.VisorJob;
@@ -119,9 +119,12 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
 
             for (String cacheName : cacheNames) {
                 if (!isSystemCache(cacheName) && !isIgfsCache(cfg, cacheName)) {
-                    GridCacheQueryManager<Object, Object> qryMgr = cacheProc.cache(cacheName).context().queries();
+                    IgniteInternalCache<Object, Object> cache = cacheProc.cache(cacheName);
 
-                    aggregateMetrics(jobRes, qryMgr.detailsMetrics());
+                    if (cache == null || !cache.context().started())
+                        continue;
+
+                    aggregateMetrics(jobRes, cache.context().queries().detailsMetrics());
                 }
             }
 
