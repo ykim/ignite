@@ -205,6 +205,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
         out.writeLong(minTime);
         out.writeLong(maxTime);
         out.writeLong(totalTime);
+        out.writeLong(lastStartTime);
     }
 
     /** {@inheritDoc} */
@@ -216,6 +217,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
         minTime = in.readLong();
         maxTime = in.readLong();
         totalTime = in.readLong();
+        lastStartTime = in.readLong();
     }
 
     /** {@inheritDoc} */
