@@ -127,7 +127,12 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
         }
     }
 
-    public void update(QueryDetailsMetrics m) {
+    /**
+     * Aggregate metrics.
+     *
+     * @param m Other metrics to take into account.
+     */
+    public void aggregate(QueryDetailsMetrics m) {
         if (lastStartTime < m.lastStartTime())
             lastStartTime = m.lastStartTime();
 

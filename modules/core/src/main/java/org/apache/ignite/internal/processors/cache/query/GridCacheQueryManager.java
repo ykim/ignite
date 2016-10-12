@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import javax.cache.Cache;
 import javax.cache.expiry.ExpiryPolicy;
 import org.apache.ignite.Ignite;
@@ -48,6 +47,7 @@ import org.apache.ignite.IgniteException;
 import org.apache.ignite.cache.query.QueryDetailsMetrics;
 import org.apache.ignite.cache.query.QueryMetrics;
 import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.events.CacheQueryExecutedEvent;
 import org.apache.ignite.events.CacheQueryReadEvent;
 import org.apache.ignite.events.DiscoveryEvent;
@@ -82,6 +82,7 @@ import org.apache.ignite.internal.processors.query.GridQueryIndexType;
 import org.apache.ignite.internal.processors.query.GridQueryProcessor;
 import org.apache.ignite.internal.processors.query.GridQueryTypeDescriptor;
 import org.apache.ignite.internal.processors.task.GridInternal;
+import org.apache.ignite.internal.util.GridBoundedConcurrentLinkedHashMap;
 import org.apache.ignite.internal.util.GridCloseableIteratorAdapter;
 import org.apache.ignite.internal.util.GridEmptyCloseableIterator;
 import org.apache.ignite.internal.util.GridEmptyIterator;
@@ -149,11 +150,10 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     private volatile GridCacheQueryMetricsAdapter metrics = new GridCacheQueryMetricsAdapter();
 
     /** */
-    private final ConcurrentSkipListMap<Integer, QueryDetailsMetrics> qryHist =
-        new ConcurrentSkipListMap<>();
+    private int qryHistSz;
 
     /** */
-    private int qryHistSz;
+    private GridBoundedConcurrentLinkedHashMap<Integer, QueryDetailsMetrics> qryHist;
 
     /** */
     private final ConcurrentMap<UUID, RequestFutureMap> qryIters =
@@ -180,10 +180,14 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
     /** {@inheritDoc} */
     @Override public void start0() throws IgniteCheckedException {
+        CacheConfiguration ccfg = cctx.config();
+
         qryProc = cctx.kernalContext().query();
         space = cctx.name();
-        maxIterCnt = cctx.config().getMaxQueryIteratorsCount();
-        qryHistSz = 100; // TODO IGNITE-3443 cctx.config().getQueryMetricsHistorySize();
+
+        maxIterCnt = ccfg.getMaxQueryIteratorsCount();
+        qryHistSz = ccfg.getQueryMetricsHistorySize();
+        qryHist = new GridBoundedConcurrentLinkedHashMap<>(qryHistSz);
 
         lsnr = new GridLocalEventListener() {
             @Override public void onEvent(Event evt) {
@@ -223,7 +227,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
         cctx.events().addListener(lsnr, EVT_NODE_LEFT, EVT_NODE_FAILED);
 
-        enabled = GridQueryProcessor.isEnabled(cctx.config());
+        enabled = GridQueryProcessor.isEnabled(ccfg);
 
         qryTopVer = cctx.startTopologyVersion();
 
@@ -2083,6 +2087,11 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         return metrics.copy();
     }
 
+    /**
+     * Gets cache queries detailed metrics.
+     *
+     * @return Cache queries metrics aggregated by query type and query text.
+     */
     public Collection<QueryDetailsMetrics> detailsMetrics() {
         return qryHist.values();
     }
@@ -2110,32 +2119,18 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             if (qryHistSz > 0) {
                 Integer qryHash = GridCacheQueryDetailsMetricsAdapter.queryHashCode(qryType, qry);
 
-                QueryDetailsMetrics qryMetrics = qryHist.get(qryHash);
+                // Non-blocking algorithm to update metrics.
+                while(true) {
+                    QueryDetailsMetrics qryMetrics = qryHist.remove(qryHash);
 
-                if (qryMetrics == null) {
-                    qryMetrics = new GridCacheQueryDetailsMetricsAdapter(qryType, qry);
+                    if (qryMetrics == null)
+                        qryMetrics = new GridCacheQueryDetailsMetricsAdapter(qryType, qry);
 
-                    QueryDetailsMetrics oldMetrics = qryHist.putIfAbsent(qryHash, qryMetrics);
+                    ((GridCacheQueryDetailsMetricsAdapter)qryMetrics).update(startTime, duration, failed, completed);
 
-                    if (oldMetrics != null)
-                        qryMetrics = oldMetrics;
-                }
-
-                ((GridCacheQueryDetailsMetricsAdapter)qryMetrics).update(startTime, duration, failed, completed);
-
-                while (qryHist.size() > qryHistSz) {
-                    Map.Entry<Integer, QueryDetailsMetrics> firstEntry = qryHist.firstEntry();
-                    qryHash = firstEntry.getKey();
-                    qryMetrics = firstEntry.getValue();
-
-                    for (Map.Entry<Integer, QueryDetailsMetrics> entry : qryHist.entrySet()) {
-                        if (qryMetrics.lastStartTime() > entry.getValue().lastStartTime()) {
-                            qryHash = entry.getKey();
-                            qryMetrics = entry.getValue();
-                        }
-                    }
-
-                    qryHist.remove(qryHash);
+                    // Leave if updated.
+                    if (qryHist.putIfAbsent(qryHash, qryMetrics) == null)
+                        break;
                 }
             }
         }

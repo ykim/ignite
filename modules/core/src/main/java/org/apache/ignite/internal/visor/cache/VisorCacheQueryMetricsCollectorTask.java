@@ -103,7 +103,7 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
                     res.put(qryHashCode, aggMetrics);
                 }
 
-                aggMetrics.update(m);
+                aggMetrics.aggregate(m);
             }
         }
 

@@ -210,7 +210,7 @@ public class VisorCacheMetrics implements Serializable, LessNamingBean {
         commitsPerSec = perSecond(m.getAverageTxCommitTime());
         rollbacksPerSec = perSecond(m.getAverageTxRollbackTime());
 
-        qryMetrics = new VisorCacheQueryMetrics().from(c.queryMetrics());
+        qryMetrics = VisorCacheQueryMetrics.from(c.queryMetrics());
 
         dhtEvictQueueCurrSize = m.getDhtEvictQueueCurrentSize();
         txThreadMapSize = m.getTxThreadMapSize();
