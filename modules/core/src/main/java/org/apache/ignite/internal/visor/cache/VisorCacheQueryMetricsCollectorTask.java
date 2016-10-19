@@ -95,13 +95,13 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Long
             Collection<QueryDetailsMetrics> metrics) {
             if (!metrics.isEmpty()) {
                 for (QueryDetailsMetrics m : metrics) {
-                    if (m.lastStartTime() > since) {
+                    if (m.getLastStartTime() > since) {
                         Integer qryHashCode = GridCacheQueryDetailsMetricsAdapter.queryHashCode(m);
 
                         GridCacheQueryDetailsMetricsAdapter aggMetrics = res.get(qryHashCode);
 
                         if (aggMetrics == null) {
-                            aggMetrics = new GridCacheQueryDetailsMetricsAdapter(m.queryType(), m.query());
+                            aggMetrics = new GridCacheQueryDetailsMetricsAdapter(m.getQueryType(), m.getQuery());
 
                             res.put(qryHashCode, aggMetrics);
                         }

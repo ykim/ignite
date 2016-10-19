@@ -26,12 +26,12 @@ public interface QueryDetailsMetrics {
     /**
      * @return Query type.
      */
-    public GridCacheQueryType queryType();
+    public GridCacheQueryType getQueryType();
 
     /**
      * @return Textual representation of query.
      */
-    public String query();
+    public String getQuery();
 
     /**
      * @return Cache where query was executed.
@@ -43,54 +43,54 @@ public interface QueryDetailsMetrics {
      *
      * @return Number of executions.
      */
-    public int executions();
+    public int getExecutions();
 
     /**
      * Gets number of completed execution of query.
      *
      * @return Number of completed executions.
      */
-    public int completions();
+    public int getCompletions();
 
     /**
      * Gets number of times a query execution failed.
      *
      * @return Number of times a query execution failed.
      */
-    public int failures();
+    public int getFailures();
 
     /**
      * Gets minimum execution time of query.
      *
      * @return Minimum execution time of query.
      */
-    public long minimumTime();
+    public long getMinimumTime();
 
     /**
      * Gets maximum execution time of query.
      *
      * @return Maximum execution time of query.
      */
-    public long maximumTime();
+    public long getMaximumTime();
 
     /**
      * Gets average execution time of query.
      *
      * @return Average execution time of query.
      */
-    public double averageTime();
+    public double getAverageTime();
 
     /**
      * Gets total time of all query executions.
      *
      * @return Total time of all query executions.
      */
-    public long totalTime();
+    public long getTotalTime();
 
     /**
      * Gets latest query start time.
      *
      * @return Latest time query was stared.
      */
-    public long lastStartTime();
+    public long getLastStartTime();
 }

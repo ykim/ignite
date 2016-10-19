@@ -173,15 +173,6 @@ public class VisorTaskUtils {
     }
 
     /**
-     * @param a First name.
-     * @param b Second name.
-     * @return {@code true} if both names equals.
-     */
-    public static boolean safeEquals(@Nullable String a, @Nullable String b) {
-        return (a != null && b != null) ? a.equals(b) : (a == null && b == null);
-    }
-
-    /**
      * Concat arrays in one.
      *
      * @param arrays Arrays.
@@ -637,12 +628,10 @@ public class VisorTaskUtils {
             else {
                 int toRead = Math.min(blockSz, (int)(fSz - pos));
 
-                byte[] buf = new byte[toRead];
-
                 raf = new RandomAccessFile(file, "r");
-
                 raf.seek(pos);
 
+                byte[] buf = new byte[toRead];
                 int cntRead = raf.read(buf, 0, toRead);
 
                 if (cntRead != toRead)
@@ -887,8 +876,6 @@ public class VisorTaskUtils {
         try {
             for (int i = 0; i < nodesToStart; i++) {
                 if (U.isMacOs()) {
-                    StringBuilder envs = new StringBuilder();
-
                     Map<String, String> macEnv = new HashMap<>(System.getenv());
 
                     if (envVars != null) {
@@ -904,6 +891,8 @@ public class VisorTaskUtils {
                             else
                                 macEnv.put(ent.getKey(), ent.getValue());
                     }
+
+                    StringBuilder envs = new StringBuilder();
 
                     for (Map.Entry<String, String> entry : macEnv.entrySet()) {
                         String val = entry.getValue();
@@ -1024,13 +1013,12 @@ public class VisorTaskUtils {
         ByteArrayOutputStream bos = new ByteArrayOutputStream(initBufSize);
 
         try (ZipOutputStream zos = new ZipOutputStream(bos)) {
-            ZipEntry entry = new ZipEntry("");
-
             try {
+                ZipEntry entry = new ZipEntry("");
+
                 entry.setSize(input.length);
 
                 zos.putNextEntry(entry);
-
                 zos.write(input);
             }
             finally {

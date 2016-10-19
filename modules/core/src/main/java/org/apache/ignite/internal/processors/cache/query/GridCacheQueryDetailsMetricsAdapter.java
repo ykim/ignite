@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import org.apache.ignite.cache.query.QueryDetailsMetrics;
+import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 
@@ -80,7 +81,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
      * @return Hash code.
      */
     public static Integer queryHashCode(QueryDetailsMetrics m) {
-        return  queryHashCode(m.queryType(), m.query());
+        return  queryHashCode(m.getQueryType(), m.getQuery());
     }
 
     /**
@@ -108,6 +109,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
      * @param duration Duration of queue execution.
      * @param failed {@code True} query executed unsuccessfully {@code false} otherwise.
      * @param completed {@code True} query executed unsuccessfully {@code false} otherwise.
+     * @param cache Cache name where query was executed.
      */
     public void update(long startTime, long duration, boolean failed, boolean completed, String cache) {
         lastStartTime = startTime;
@@ -138,31 +140,31 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
      * @param m Other metrics to take into account.
      */
     public void aggregate(QueryDetailsMetrics m) {
-        if (lastStartTime < m.lastStartTime())
-            lastStartTime = m.lastStartTime();
+        if (lastStartTime < m.getLastStartTime())
+            lastStartTime = m.getLastStartTime();
 
-        execs += m.executions();
-        failures += m.failures();
-        completions += m.completions();
+        execs += m.getExecutions();
+        failures += m.getFailures();
+        completions += m.getCompletions();
 
-        totalTime += m.totalTime();
+        totalTime += m.getTotalTime();
 
-        if (minTime < 0 || minTime < m.minimumTime())
-            minTime = m.maximumTime();
+        if (minTime < 0 || minTime > m.getMinimumTime())
+            minTime = m.getMinimumTime();
 
-        if (maxTime < m.maximumTime())
-            maxTime = m.maximumTime();
+        if (maxTime < m.getMaximumTime())
+            maxTime = m.getMaximumTime();
 
         cache = m.cache();
     }
 
     /** {@inheritDoc} */
-    @Override public GridCacheQueryType queryType() {
+    @Override public GridCacheQueryType getQueryType() {
         return qryType;
     }
 
     /** {@inheritDoc} */
-    @Override public String query() {
+    @Override public String getQuery() {
         return qry;
     }
 
@@ -172,44 +174,44 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     }
 
     /** {@inheritDoc} */
-    @Override public int executions() {
+    @Override public int getExecutions() {
         return execs;
     }
 
     /** {@inheritDoc} */
-    @Override public int completions() {
+    @Override public int getCompletions() {
         return completions;
     }
 
     /** {@inheritDoc} */
-    @Override public int failures() {
+    @Override public int getFailures() {
         return failures;
     }
 
     /** {@inheritDoc} */
-    @Override public long minimumTime() {
+    @Override public long getMinimumTime() {
         return minTime < 0 ? 0 : minTime;
     }
 
     /** {@inheritDoc} */
-    @Override public long maximumTime() {
+    @Override public long getMaximumTime() {
         return maxTime;
     }
 
     /** {@inheritDoc} */
-    @Override public double averageTime() {
+    @Override public double getAverageTime() {
         double val = completions;
 
         return val > 0 ? totalTime / val : 0;
     }
 
     /** {@inheritDoc} */
-    @Override public long totalTime() {
+    @Override public long getTotalTime() {
         return totalTime;
     }
 
     /** {@inheritDoc} */
-    @Override public long lastStartTime() {
+    @Override public long getLastStartTime() {
         return lastStartTime;
     }
 
@@ -254,7 +256,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
 
         GridCacheQueryDetailsMetricsAdapter other = (GridCacheQueryDetailsMetricsAdapter)o;
 
-        return qryType == other.qryType && ((qry == null && other.qry == null) || qry.equals(other.qry));
+        return qryType == other.qryType && F.eq(qry, other.qry);
     }
 
     /** {@inheritDoc} */
