@@ -42,13 +42,13 @@ import static org.apache.ignite.internal.processors.cache.GridCacheUtils.isSyste
  * Task to collect cache query metrics.
  */
 @GridInternal
-public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void, Collection<? extends QueryDetailsMetrics>,
+public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Long, Collection<? extends QueryDetailsMetrics>,
     Collection<? extends QueryDetailsMetrics>> {
     /** */
     private static final long serialVersionUID = 0L;
 
     /** {@inheritDoc} */
-    @Override protected VisorCacheQueryMetricsCollectorJob job(Void arg) {
+    @Override protected VisorCacheQueryMetricsCollectorJob job(Long arg) {
         return new VisorCacheQueryMetricsCollectorJob(arg, debug);
     }
 
@@ -63,7 +63,7 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
 
             Collection<QueryDetailsMetrics> metrics = res.getData();
 
-            VisorCacheQueryMetricsCollectorJob.aggregateMetrics(taskRes, metrics);
+            VisorCacheQueryMetricsCollectorJob.aggregateMetrics(-1, taskRes, metrics);
         }
 
         return new ArrayList<>(taskRes.values());
@@ -72,43 +72,50 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
     /**
      * Job that will actually collect query metrics.
      */
-    private static class VisorCacheQueryMetricsCollectorJob extends VisorJob<Void, Collection<? extends QueryDetailsMetrics>> {
+    private static class VisorCacheQueryMetricsCollectorJob extends VisorJob<Long, Collection<? extends QueryDetailsMetrics>> {
         /** */
         private static final long serialVersionUID = 0L;
 
         /**
          * Create job with specified argument.
          *
-         * @param arg Job argument.
+         * @param arg Last time when metrics were collected.
          * @param debug Debug flag.
          */
-        protected VisorCacheQueryMetricsCollectorJob(@Nullable Void arg, boolean debug) {
+        protected VisorCacheQueryMetricsCollectorJob(@Nullable Long arg, boolean debug) {
             super(arg, debug);
         }
 
         /**
+         * @param since Time when metrics were collected last time.
          * @param res Response.
          * @param metrics Metrics.
          */
-        private static void aggregateMetrics(Map<Integer, GridCacheQueryDetailsMetricsAdapter> res,
+        private static void aggregateMetrics(long since, Map<Integer, GridCacheQueryDetailsMetricsAdapter> res,
             Collection<QueryDetailsMetrics> metrics) {
-            for (QueryDetailsMetrics m : metrics) {
-                Integer qryHashCode = GridCacheQueryDetailsMetricsAdapter.queryHashCode(m);
+            if (!metrics.isEmpty()) {
+                for (QueryDetailsMetrics m : metrics) {
+                    if (m.lastStartTime() > since) {
+                        Integer qryHashCode = GridCacheQueryDetailsMetricsAdapter.queryHashCode(m);
 
-                GridCacheQueryDetailsMetricsAdapter aggMetrics = res.get(qryHashCode);
+                        GridCacheQueryDetailsMetricsAdapter aggMetrics = res.get(qryHashCode);
 
-                if (aggMetrics == null) {
-                    aggMetrics = new GridCacheQueryDetailsMetricsAdapter(m.queryType(), m.query());
+                        if (aggMetrics == null) {
+                            aggMetrics = new GridCacheQueryDetailsMetricsAdapter(m.queryType(), m.query());
 
-                    res.put(qryHashCode, aggMetrics);
+                            res.put(qryHashCode, aggMetrics);
+                        }
+
+                        aggMetrics.aggregate(m);
+                    }
                 }
-
-                aggMetrics.aggregate(m);
             }
         }
 
         /** {@inheritDoc} */
-        @Override protected Collection<? extends QueryDetailsMetrics> run(@Nullable Void arg) throws IgniteException {
+        @Override protected Collection<? extends QueryDetailsMetrics> run(@Nullable Long arg) throws IgniteException {
+            assert arg != null;
+
             IgniteConfiguration cfg = ignite.configuration();
 
             GridCacheProcessor cacheProc = ignite.context().cache();
@@ -124,7 +131,7 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Void
                     if (cache == null || !cache.context().started())
                         continue;
 
-                    aggregateMetrics(jobRes, cache.context().queries().detailsMetrics());
+                    aggregateMetrics(arg, jobRes, cache.context().queries().detailsMetrics());
                 }
             }
 
