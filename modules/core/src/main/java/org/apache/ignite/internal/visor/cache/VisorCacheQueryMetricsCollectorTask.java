@@ -96,7 +96,7 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Long
             if (!metrics.isEmpty()) {
                 for (QueryDetailsMetrics m : metrics) {
                     if (m.getLastStartTime() > since) {
-                        Integer qryHashCode = GridCacheQueryDetailsMetricsAdapter.queryHashCode(m);
+                        Integer qryHashCode = m.hashCode();
 
                         GridCacheQueryDetailsMetricsAdapter aggMetrics = res.get(qryHashCode);
 

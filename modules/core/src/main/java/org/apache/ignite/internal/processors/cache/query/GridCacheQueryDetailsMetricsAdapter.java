@@ -70,18 +70,8 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
      * @param qry Textual query representation.
      * @return Hash code.
      */
-    public static Integer queryHashCode(GridCacheQueryType qryType, String qry) {
+    public static int queryHashCode(GridCacheQueryType qryType, String qry) {
         return  31 * qryType.hashCode() + qry.hashCode();
-    }
-
-    /**
-     * Calculate hash code for query metrics.
-     *
-     * @param m Metrics.
-     * @return Hash code.
-     */
-    public static Integer queryHashCode(QueryDetailsMetrics m) {
-        return  queryHashCode(m.getQueryType(), m.getQuery());
     }
 
     /**
