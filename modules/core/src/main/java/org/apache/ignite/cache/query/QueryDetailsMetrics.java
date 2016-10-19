@@ -34,6 +34,11 @@ public interface QueryDetailsMetrics {
     public String query();
 
     /**
+     * @return Cache where query was executed.
+     */
+    public String cache();
+
+    /**
      * Gets total number execution of query.
      *
      * @return Number of executions.

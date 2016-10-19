@@ -2126,7 +2126,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                     if (qryMetrics == null)
                         qryMetrics = new GridCacheQueryDetailsMetricsAdapter(qryType, qry);
 
-                    ((GridCacheQueryDetailsMetricsAdapter)qryMetrics).update(startTime, duration, failed, completed);
+                    ((GridCacheQueryDetailsMetricsAdapter)qryMetrics).update(startTime, duration, failed, completed, cctx.name());
 
                     // Leave if updated.
                     if (qryHist.putIfAbsent(qryHash, qryMetrics) == null)

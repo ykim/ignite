@@ -38,6 +38,9 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     /** Textual query representation. */
     private String qry;
 
+    /** Cache name. */
+    private String cache;
+
     /** Number of executions. */
     private int execs;
 
@@ -106,7 +109,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
      * @param failed {@code True} query executed unsuccessfully {@code false} otherwise.
      * @param completed {@code True} query executed unsuccessfully {@code false} otherwise.
      */
-    public void update(long startTime, long duration, boolean failed, boolean completed) {
+    public void update(long startTime, long duration, boolean failed, boolean completed, String cache) {
         lastStartTime = startTime;
 
         if (failed) {
@@ -125,6 +128,8 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
             if (maxTime < duration)
                 maxTime = duration;
         }
+
+        this.cache = cache;
     }
 
     /**
@@ -147,6 +152,8 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
 
         if (maxTime < m.maximumTime())
             maxTime = m.maximumTime();
+
+        cache = m.cache();
     }
 
     /** {@inheritDoc} */
@@ -157,6 +164,11 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     /** {@inheritDoc} */
     @Override public String query() {
         return qry;
+    }
+
+    /** {@inheritDoc} */
+    @Override public String cache() {
+        return cache;
     }
 
     /** {@inheritDoc} */
@@ -205,6 +217,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     @Override public void writeExternal(ObjectOutput out) throws IOException {
         U.writeEnum(out, qryType);
         U.writeString(out, qry);
+        U.writeString(out, cache);
         out.writeInt(execs);
         out.writeInt(completions);
         out.writeLong(minTime);
@@ -217,6 +230,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         qryType = GridCacheQueryType.fromOrdinal(in.readByte());
         qry = U.readString(in);
+        cache = U.readString(in);
         execs = in.readInt();
         completions = in.readInt();
         minTime = in.readLong();
