@@ -240,6 +240,24 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     }
 
     /** {@inheritDoc} */
+    @Override public int hashCode() {
+        return queryHashCode(qryType, qry);
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (o == null || getClass() != o.getClass())
+            return false;
+
+        GridCacheQueryDetailsMetricsAdapter other = (GridCacheQueryDetailsMetricsAdapter)o;
+
+        return qryType == other.qryType && ((qry == null && other.qry == null) || qry.equals(other.qry));
+    }
+
+    /** {@inheritDoc} */
     @Override public String toString() {
         return S.toString(GridCacheQueryDetailsMetricsAdapter.class, this);
     }
