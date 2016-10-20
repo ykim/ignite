@@ -153,7 +153,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     private int qryHistSz;
 
     /** */
-    private GridBoundedConcurrentLinkedHashMap<Integer, QueryDetailsMetrics> qryHist;
+    private GridBoundedConcurrentLinkedHashMap<GridCacheQueryDetailsMetricsKey, GridCacheQueryDetailsMetricsAdapter> qryHist;
 
     /** */
     private final ConcurrentMap<UUID, RequestFutureMap> qryIters =
@@ -2092,7 +2092,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      *
      * @return Cache queries metrics aggregated by query type and query text.
      */
-    public Collection<QueryDetailsMetrics> detailsMetrics() {
+    public Collection<GridCacheQueryDetailsMetricsAdapter> detailsMetrics() {
         return qryHist.values();
     }
 
@@ -2117,19 +2117,19 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             metrics.update(duration, failed, completed);
 
             if (qryHistSz > 0) {
-                Integer qryHash = GridCacheQueryDetailsMetricsAdapter.queryHashCode(qryType, qry);
+                GridCacheQueryDetailsMetricsAdapter newQryMetrics = new GridCacheQueryDetailsMetricsAdapter(qryType,
+                    qry, cctx.name(), startTime, duration, failed, completed);
+
+                GridCacheQueryDetailsMetricsKey qryKey = newQryMetrics.key();
 
                 // Non-blocking algorithm to update metrics.
                 while(true) {
-                    QueryDetailsMetrics qryMetrics = qryHist.remove(qryHash);
+                    GridCacheQueryDetailsMetricsAdapter qryMetrics = qryHist.remove(qryKey);
 
-                    if (qryMetrics == null)
-                        qryMetrics = new GridCacheQueryDetailsMetricsAdapter(qryType, qry);
-
-                    ((GridCacheQueryDetailsMetricsAdapter)qryMetrics).update(startTime, duration, failed, completed, cctx.name());
+                    qryMetrics = qryMetrics != null ? qryMetrics.aggregate(newQryMetrics) : newQryMetrics;
 
                     // Leave if updated.
-                    if (qryHist.putIfAbsent(qryHash, qryMetrics) == null)
+                    if (qryHist.putIfAbsent(qryKey, qryMetrics) == null)
                         break;
                 }
             }

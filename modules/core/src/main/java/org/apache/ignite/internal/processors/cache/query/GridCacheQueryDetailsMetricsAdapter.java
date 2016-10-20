@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import org.apache.ignite.cache.query.QueryDetailsMetrics;
-import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 
@@ -64,17 +63,6 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     private long lastStartTime;
 
     /**
-     * Calculate hash code for query metrics.
-     *
-     * @param qryType Query type.
-     * @param qry Textual query representation.
-     * @return Hash code.
-     */
-    public static int queryHashCode(GridCacheQueryType qryType, String qry) {
-        return  31 * qryType.hashCode() + qry.hashCode();
-    }
-
-    /**
      * Required by {@link Externalizable}.
      */
     public GridCacheQueryDetailsMetricsAdapter() {
@@ -82,46 +70,56 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     }
 
     /**
-     * Constructor.
+     * Constructor with metrics.
      *
      * @param qryType Query type.
      * @param qry Textual query representation.
-     */
-    public GridCacheQueryDetailsMetricsAdapter(GridCacheQueryType qryType, String qry) {
-        this.qryType = qryType;
-        this.qry = qry;
-    }
-
-    /**
-     * Update metrics on query execution.
-     *
+     * @param cache Cache name where query was executed.
      * @param startTime Duration of queue execution.
      * @param duration Duration of queue execution.
      * @param failed {@code True} query executed unsuccessfully {@code false} otherwise.
      * @param completed {@code True} query executed unsuccessfully {@code false} otherwise.
-     * @param cache Cache name where query was executed.
      */
-    public void update(long startTime, long duration, boolean failed, boolean completed, String cache) {
-        lastStartTime = startTime;
+    public GridCacheQueryDetailsMetricsAdapter(GridCacheQueryType qryType, String qry, String cache, long startTime,
+        long duration, boolean failed, boolean completed) {
+        this.qryType = qryType;
+        this.qry = qry;
+        this.cache = cache;
 
         if (failed) {
-            execs += 1;
-            failures += 1;
+            execs = 1;
+            failures = 1;
         }
         else if (completed) {
-            execs += 1;
-            completions += 1;
-
-            totalTime += duration;
-
-            if (minTime < 0 || minTime > duration)
-                minTime = duration;
-
-            if (maxTime < duration)
-                maxTime = duration;
+            execs = 1;
+            completions = 1;
+            totalTime = duration;
+            minTime = duration;
+            maxTime = duration;
         }
 
+        lastStartTime = startTime;
+    }
+
+    /**
+     * Copy constructor.
+     *
+     * @param qryType Query type.
+     * @param qry Textual query representation.
+     * @param cache Cache name where query was executed.
+     */
+    public GridCacheQueryDetailsMetricsAdapter(GridCacheQueryType qryType, String qry, String cache,
+        int execs, int completions, int failures, long minTime, long maxTime, long totalTime, long lastStartTime) {
+        this.qryType = qryType;
+        this.qry = qry;
         this.cache = cache;
+        this.execs = execs;
+        this.completions = completions;
+        this.failures = failures;
+        this.minTime = minTime;
+        this.maxTime = maxTime;
+        this.totalTime = totalTime;
+        this.lastStartTime = lastStartTime;
     }
 
     /**
@@ -129,23 +127,26 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
      *
      * @param m Other metrics to take into account.
      */
-    public void aggregate(QueryDetailsMetrics m) {
-        if (lastStartTime < m.getLastStartTime())
-            lastStartTime = m.getLastStartTime();
+    public GridCacheQueryDetailsMetricsAdapter aggregate(QueryDetailsMetrics m) {
+        return new GridCacheQueryDetailsMetricsAdapter(
+            qryType,
+            qry,
+            m.getCache(),
+            execs + m.getExecutions(),
+            completions + m.getCompletions(),
+            failures + m.getFailures(),
+            minTime < 0 || minTime > m.getMinimumTime() ? m.getMinimumTime() : minTime,
+            maxTime < m.getMaximumTime() ? m.getMaximumTime() : maxTime,
+            totalTime + m.getTotalTime(),
+            lastStartTime < m.getLastStartTime() ? m.getLastStartTime() : lastStartTime
+        );
+    }
 
-        execs += m.getExecutions();
-        failures += m.getFailures();
-        completions += m.getCompletions();
-
-        totalTime += m.getTotalTime();
-
-        if (minTime < 0 || minTime > m.getMinimumTime())
-            minTime = m.getMinimumTime();
-
-        if (maxTime < m.getMaximumTime())
-            maxTime = m.getMaximumTime();
-
-        cache = m.cache();
+    /**
+     * @return Metrics group key.
+     */
+    public GridCacheQueryDetailsMetricsKey key() {
+        return new GridCacheQueryDetailsMetricsKey(qryType, qry);
     }
 
     /** {@inheritDoc} */
@@ -159,7 +160,7 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
     }
 
     /** {@inheritDoc} */
-    @Override public String cache() {
+    @Override public String getCache() {
         return cache;
     }
 
@@ -229,24 +230,6 @@ public class GridCacheQueryDetailsMetricsAdapter implements QueryDetailsMetrics,
         maxTime = in.readLong();
         totalTime = in.readLong();
         lastStartTime = in.readLong();
-    }
-
-    /** {@inheritDoc} */
-    @Override public int hashCode() {
-        return queryHashCode(qryType, qry);
-    }
-
-    /** {@inheritDoc} */
-    @Override public boolean equals(Object o) {
-        if (this == o)
-            return true;
-
-        if (o == null || getClass() != o.getClass())
-            return false;
-
-        GridCacheQueryDetailsMetricsAdapter other = (GridCacheQueryDetailsMetricsAdapter)o;
-
-        return qryType == other.qryType && F.eq(qry, other.qry);
     }
 
     /** {@inheritDoc} */

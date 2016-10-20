@@ -61,7 +61,7 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Long
             if (res.getException() != null)
                 throw res.getException();
 
-            Collection<QueryDetailsMetrics> metrics = res.getData();
+            Collection<GridCacheQueryDetailsMetricsAdapter> metrics = res.getData();
 
             VisorCacheQueryMetricsCollectorJob.aggregateMetrics(-1, taskRes, metrics);
         }
@@ -92,21 +92,15 @@ public class VisorCacheQueryMetricsCollectorTask extends VisorMultiNodeTask<Long
          * @param metrics Metrics.
          */
         private static void aggregateMetrics(long since, Map<Integer, GridCacheQueryDetailsMetricsAdapter> res,
-            Collection<QueryDetailsMetrics> metrics) {
+            Collection<GridCacheQueryDetailsMetricsAdapter> metrics) {
             if (!metrics.isEmpty()) {
-                for (QueryDetailsMetrics m : metrics) {
+                for (GridCacheQueryDetailsMetricsAdapter m : metrics) {
                     if (m.getLastStartTime() > since) {
                         Integer qryHashCode = m.hashCode();
 
                         GridCacheQueryDetailsMetricsAdapter aggMetrics = res.get(qryHashCode);
 
-                        if (aggMetrics == null) {
-                            aggMetrics = new GridCacheQueryDetailsMetricsAdapter(m.getQueryType(), m.getQuery());
-
-                            res.put(qryHashCode, aggMetrics);
-                        }
-
-                        aggMetrics.aggregate(m);
+                        res.put(qryHashCode, aggMetrics == null ? m : aggMetrics.aggregate(m));
                     }
                 }
             }

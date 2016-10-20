@@ -36,7 +36,7 @@ public interface QueryDetailsMetrics {
     /**
      * @return Cache where query was executed.
      */
-    public String cache();
+    public String getCache();
 
     /**
      * Gets total number execution of query.
