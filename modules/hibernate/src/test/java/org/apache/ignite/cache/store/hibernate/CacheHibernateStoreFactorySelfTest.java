@@ -39,6 +39,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.StatelessSessionBuilder;
 import org.hibernate.TypeHelper;
+import org.hibernate.boot.spi.SessionFactoryOptions;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.metadata.CollectionMetadata;
@@ -223,38 +224,6 @@ public class CacheHibernateStoreFactorySelfTest extends GridCommonAbstractTest {
         /** {@inheritDoc} */
         @Override public Cache getCache() {
             return null;
-        }
-
-        /** {@inheritDoc} */
-        @Override public void evict(Class persistentClass) throws HibernateException {
-        }
-
-        /** {@inheritDoc} */
-        @Override public void evict(Class persistentClass, Serializable id) throws HibernateException {
-        }
-
-        /** {@inheritDoc} */
-        @Override public void evictEntity(String entityName) throws HibernateException {
-        }
-
-        /** {@inheritDoc} */
-        @Override public void evictEntity(String entityName, Serializable id) throws HibernateException {
-        }
-
-        /** {@inheritDoc} */
-        @Override public void evictCollection(String roleName) throws HibernateException {
-        }
-
-        /** {@inheritDoc} */
-        @Override public void evictCollection(String roleName, Serializable id) throws HibernateException {
-        }
-
-        /** {@inheritDoc} */
-        @Override public void evictQueries(String cacheRegion) throws HibernateException {
-        }
-
-        /** {@inheritDoc} */
-        @Override public void evictQueries() throws HibernateException {
         }
 
         /** {@inheritDoc} */

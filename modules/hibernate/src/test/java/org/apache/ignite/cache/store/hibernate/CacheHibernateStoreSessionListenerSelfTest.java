@@ -40,6 +40,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.resource.transaction.spi.TransactionStatus;
 
 /**
  * Tests for {@link CacheJdbcStoreSessionListener}.
@@ -155,9 +156,9 @@ public class CacheHibernateStoreSessionListenerSelfTest extends CacheStoreSessio
             assertNotNull(tx);
 
             if (ses.isWithinTransaction())
-                assertTrue(tx.isActive());
+                assertTrue(TransactionStatus.ACTIVE.equals(tx.getStatus()));
             else
-                assertFalse(tx.isActive());
+                assertTrue(TransactionStatus.ACTIVE.equals(tx.getStatus()));
 
             verifySameInstance(hibSes);
         }
